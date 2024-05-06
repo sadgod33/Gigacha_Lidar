@@ -1,0 +1,5 @@
+<launch>
+    <!--- LeGO-LOAM -->    
+    <node pkg="pcl_cpp_tutorial" type="practics_dynamic_main" name="practics_dynamic_main"  output="screen"/>
+        <param name="frame_id" value="os_sensor"/>
+</launch>
