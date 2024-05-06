@@ -1,8 +1,0 @@
-prefix=/home/sadgod33/catkin_ws/src/pcl_cpp_tutorial/build/devel
-
-Name: pcl_cpp_tutorial
-Description: Description of pcl_cpp_tutorial
-Version: 0.0.0
-Cflags: 
-Libs: -L${prefix}/lib 
-Requires: pcl_conversions pcl_ros roscpp sensor_msgs std_msgs message_filters
