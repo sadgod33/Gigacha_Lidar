@@ -95,7 +95,7 @@ public:
 		sync.reset(new Sync(MySyncPolicy(50), subLidar, subLocalMsgs));
         sync->registerCallback(boost::bind(&ImageProjection::cloudHandler, this, _1, _2));
 
-		// 													mapReader();
+		// 													mapReader("json 파일");
 		allocateMemory();
 		clearMemory();
 }

@@ -22,8 +22,8 @@ void Preprocessor::removeBody(const pcl::PointCloud<PointType>::Ptr& input_point
 {
     pcl::PointCloud<PointType>::Ptr tempCloud(new pcl::PointCloud<PointType>);
     // X 축으로 filtering
-    pcl::PassThrough<pcl::PointXYZI> xfilter;
-    pcl::PassThrough<pcl::PointXYZI> yfilter;
+    pcl::PassThrough<PointType> xfilter;
+    pcl::PassThrough<PointType> yfilter;
 
     xfilter.setInputCloud(input_pointCloud);
     xfilter.setFilterFieldName("x");
@@ -229,7 +229,7 @@ void Preprocessor::convertPCLtoVector(const pcl::PointCloud<PointType>::Ptr& inp
     }
 
     // 벡터를 x 좌표에 따라 오름차순으로 정렬합니다.
-    std::sort(output_vector->begin(), output_vector->end(), [](const pcl::PointXYZI& a, const pcl::PointXYZI& b) {
+    std::sort(output_vector->begin(), output_vector->end(), [](const PointType& a, const PointType& b) {
         return a.x < b.x;
     });
 }

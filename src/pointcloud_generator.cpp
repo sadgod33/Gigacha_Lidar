@@ -234,9 +234,9 @@ void PointCloudGenerator::getconeROICloud(const pcl::PointCloud<PointType>::Ptr&
  * @param output_Rcone_pointCloud 우측 콘의 포인트 클라우드
  * @param output_Lcone_pointCloud 좌측 콘의 포인트 클라우드
 */
-void PointCloudGenerator::getLRconeCloud(const pcl::PointCloud<PointType>::Ptr& input_pointCloud, const pcl::PointCloud<PointType>::Ptr& output_Rcone_pointCloud, const pcl::PointCloud<PointType>::Ptr& output_Lcone_pointCloud)
+void PointCloudGenerator::getLRconeCloud(const pcl::PointCloud<PointType>::Ptr& input_pointCloud, const pcl::PointCloud<PointType>::Ptr& output_Rcone_pointCloud, const pcl::PointCloud<PointType>::Ptr& output_Lcone_pointCloud, const std::shared_ptr<visualization_msgs::MarkerArray>&  debug_Rcone_pointCloud = nullptr, const std::shared_ptr<visualization_msgs::MarkerArray>&  debug_Lcone_pointCloud = nullptr)
 {
-    clustering.identifyLRcone_v2(input_pointCloud, output_Rcone_pointCloud, output_Lcone_pointCloud);
+    clustering.identifyLRcone_v2(input_pointCloud, output_Rcone_pointCloud, output_Lcone_pointCloud, debug_Rcone_pointCloud, debug_Lcone_pointCloud);
 }
 
 
@@ -274,7 +274,7 @@ void PointCloudGenerator::getROICloud(const pcl::PointCloud<PointType>::Ptr& inp
         if (i%10==0){
             std::vector<int> idxes;
             std::vector<float> _;
-            pcl::PointXYZI query;
+            PointType query;
             idxes.clear();
             _.clear();
 

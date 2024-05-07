@@ -39,6 +39,8 @@ private:
 	ros::Publisher pubRconeCloud;
 	ros::Publisher pubDebugCloud;
 	ros::Publisher pubROIMarkerArray;
+	ros::Publisher pubLConeLineMarkerArray;
+	ros::Publisher pubRConeLineMarkerArray;
 
 	// subscriber
 	message_filters::Subscriber<sensor_msgs::PointCloud2> subLidar;
@@ -60,6 +62,8 @@ private:
 
 	// Publish할 MarkerArray
 	std::shared_ptr<visualization_msgs::MarkerArray> ROIMarkerArray = std::make_shared<visualization_msgs::MarkerArray>();
+	std::shared_ptr<visualization_msgs::MarkerArray> LConeLineMarkerArray = std::make_shared<visualization_msgs::MarkerArray>();
+	std::shared_ptr<visualization_msgs::MarkerArray> RConeLineMarkerArray = std::make_shared<visualization_msgs::MarkerArray>();
 
 	// 초기화 X
 	pcl::PointCloud<PointType>::Ptr savedClusterCloud;
@@ -83,6 +87,8 @@ public:
 		pubRconeCloud = nh.advertise<sensor_msgs::PointCloud2>("/Rcone_cloud", 1);
 		pubDebugCloud = nh.advertise<sensor_msgs::PointCloud2>("/debug_cloud", 1);
 		pubROIMarkerArray = nh.advertise<visualization_msgs::MarkerArray>("/ROI_marker_array", 1);
+		pubLConeLineMarkerArray = nh.advertise<visualization_msgs::MarkerArray>("/Lcone_line_marker_array", 1);
+		pubRConeLineMarkerArray = nh.advertise<visualization_msgs::MarkerArray>("/Rcone_line_marker_array", 1);
 
 		// Subscribe할 토픽 설정
 		subLidar.subscribe(nh, "/os_cloud_node/points", 10);
@@ -125,7 +131,9 @@ public:
 		LconeCloud->clear();
 		RconeCloud->clear();
 		debugCloud->clear();
-		ROIMarkerArray->markers.clear();
+		deleteAllMarkers(ROIMarkerArray);
+		deleteAllMarkers(LConeLineMarkerArray);
+		deleteAllMarkers(RConeLineMarkerArray);
 	}
 
 
@@ -156,13 +164,15 @@ public:
 	// 콘 ROI 설정
 		pointCloudGenerator.getconeROICloud(coneClusterCloud, coneROICloud, ROIMarkerArray);
 	// 콘 클러스터링
-		pointCloudGenerator.getLRconeCloud(coneROICloud, RconeCloud, LconeCloud);
+		pointCloudGenerator.getLRconeCloud(coneROICloud, RconeCloud, LconeCloud, RConeLineMarkerArray, LConeLineMarkerArray);
 	}
 
 
 	void publishPointCloud(){
 	// MarkArray Publish
 		publisherMarkerArray(ROIMarkerArray, pubROIMarkerArray, "/map");
+		publisherMarkerArray(LConeLineMarkerArray, pubLConeLineMarkerArray, "/map");
+		publisherMarkerArray(RConeLineMarkerArray, pubRConeLineMarkerArray, "/map");
 
 	// 포인트 클라우드 Publish
 		publisher(interestCloud, pubInterestCloud, "/map");
@@ -176,7 +186,7 @@ public:
 		publisher(debugCloud, pubDebugCloud, "/map");
 
 		// 평시에는 꼭 주석처리 한다!
-		publisher(fullCloud, pubFullCloud, "/map");
+		//publisher(fullCloud, pubFullCloud, "/map");
 	}
 };
 

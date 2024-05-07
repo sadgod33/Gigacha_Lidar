@@ -1,0 +1,16 @@
+https://monster2z.tistory.com/28
+1. git init
+2. git add . 
+3. git commit -m "남기고 싶은 내용" - ex) first commit
+4. git remote add origin "연결하고 싶은 주소" - git@github.com:~~~/~~~.git
+5. git pull 
+
+진행하면 된다. 
+
+초기세팅일 경우에
+$ git config --global user.name "John Doe" 
+$ git config --global user.email johndoe@example.com
+
+
+위를 진행할때 
+4번 과정에서 비밀번호로 하는 방식은 이제 막혀서 ssh로 전환해야 한다. 

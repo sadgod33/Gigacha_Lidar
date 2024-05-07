@@ -55,55 +55,6 @@ void Clustering::clusterObject(const pcl::PointCloud<PointType>::Ptr& input_poin
     pcl::PointCloud<PointType>::Ptr preprocessed_pointCloud(new pcl::PointCloud<PointType>);
     *preprocessed_pointCloud = *noWall_PointCloud;
     *debug_pointCloud = *preprocessed_pointCloud;
-/*
-// 시야각 범위 외 포인트 제거
-    pcl::ConditionAnd<pcl::PointXYZI>::Ptr range_cond(new pcl::ConditionAnd<pcl::PointXYZI>());
-    range_cond->addComparison(pcl::FieldComparison<pcl::PointXYZI>::ConstPtr(
-        new pcl::FieldComparison<pcl::PointXYZI>("x", pcl::ComparisonOps::GT, -2)));
-    range_cond->addComparison(pcl::FieldComparison<pcl::PointXYZI>::ConstPtr(
-        new pcl::FieldComparison<pcl::PointXYZI>("x", pcl::ComparisonOps::LT, 2)));
-
-    pcl::ConditionOr<pcl::PointXYZI>::Ptr y_cond(new pcl::ConditionOr<pcl::PointXYZI>());
-    y_cond->addComparison(pcl::FieldComparison<pcl::PointXYZI>::ConstPtr(
-        new pcl::FieldComparison<pcl::PointXYZI>("y", pcl::ComparisonOps::LT, -1.5)));
-    y_cond->addComparison(pcl::FieldComparison<pcl::PointXYZI>::ConstPtr(
-        new pcl::FieldComparison<pcl::PointXYZI>("y", pcl::ComparisonOps::GT, 1.5)));
-
-    // 조건 결합
-    pcl::ConditionAnd<pcl::PointXYZI>::Ptr conditions(new pcl::ConditionAnd<pcl::PointXYZI>());
-    conditions->addCondition(range_cond);
-    conditions->addCondition(y_cond);
-
-    pcl::PointCloud<pcl::PointXYZI>::Ptr preprocessed_pointCloud(new pcl::PointCloud<pcl::PointXYZI>);
-    pcl::ConditionalRemoval<pcl::PointXYZI> condrem;
-    condrem.setCondition(conditions);
-    condrem.setInputCloud(noWall_PointCloud);
-    condrem.setKeepOrganized(false);
-    condrem.filter(*preprocessed_pointCloud);
-    
-*/
-    /*
-// 거리 기반 클러스터링
-    pcl::EuclideanClusterExtraction<PointType> coneClusterExtractor;
-    pcl::search::KdTree<PointType>::Ptr tree(new pcl::search::KdTree<PointType>());
-
-// 클러스터링 설정
-    // 클러스터링 대상 지정
-    tree->setInputCloud(preprocessed_pointCloud);
-    
-    // 클러스터 크기 설정
-    coneClusterExtractor.setClusterTolerance(OBJECT_Tolerance);
-    coneClusterExtractor.setMinClusterSize(OBJECT_min_SIZE);
-    coneClusterExtractor.setMaxClusterSize(OBJECT_MAX_SIZE);
-
-    // 클러스터 검색 알고리즘 지정
-    coneClusterExtractor.setSearchMethod(tree);
-
-    // 각 클러스터에 위치하는 포인트를 가르키는 인덱스
-    coneClusterExtractor.setInputCloud(preprocessed_pointCloud);
-    std::vector<pcl::PointIndices> clusterIndices;
-    coneClusterExtractor.extract(clusterIndices);
-    */
     
     pcl::PointCloud<pcl::Normal>::Ptr normals(new pcl::PointCloud<pcl::Normal>);
     pcl::search::KdTree<PointType>::Ptr tree(new pcl::search::KdTree<PointType>());
@@ -342,6 +293,7 @@ void Clustering::clusterCone(const pcl::PointCloud<PointType>::Ptr& input_pointC
     }
 }
 
+
 /**
  ** 중심점을 선정한 뒤 해당 중심점을 기준으로 ROI 설정
 */
@@ -352,7 +304,7 @@ void Clustering::setConeROI(const pcl::PointCloud<PointType>::Ptr& input_pointCl
     pcl::PointCloud<PointType>::Ptr temp_pointCloud(new pcl::PointCloud<PointType>);
     std::shared_ptr<std::vector<float>> x_values = std::make_shared<std::vector<float>>();
     std::shared_ptr<std::vector<float>> y_values = std::make_shared<std::vector<float>>();
-    pcl::KdTreeFLANN<pcl::PointXYZI> kdtree;
+    pcl::KdTreeFLANN<PointType> kdtree;
 
     PointType midPoint;
     midPoint.x = 2.0;
@@ -498,6 +450,51 @@ void Clustering::setConeROI(const pcl::PointCloud<PointType>::Ptr& input_pointCl
         ROI_MarkerArray->markers.push_back(marker);
     }
 
+    for (visualization_msgs::Marker& marker : ROI_MarkerArray->markers)
+    {
+        x_values->push_back(marker.pose.position.x);
+        y_values->push_back(marker.pose.position.y);
+    }
+
+    const int n = x_values->size();
+    Eigen::MatrixXd X(n, 4); // 3차 방정식에 맞게 열의 수를 4로 변경
+    Eigen::VectorXd Y(n);
+
+    for (int j = 0; j < n; ++j)
+    {
+        X(j, 0) = std::pow((*x_values)[j], 3); // x^3 항 추가
+        X(j, 1) = std::pow((*x_values)[j], 2); // x^2 항
+        X(j, 2) = (*x_values)[j];              // x 항
+        X(j, 3) = 1;                           // 상수 항
+        Y(j)    = (*y_values)[j];
+    }
+
+    // 디버깅용 라인 생성
+    Eigen::VectorXd coeffs = X.jacobiSvd(Eigen::ComputeThinU | Eigen::ComputeThinV).solve(Y);
+    std::cout << coeffs[0] << "x^3 + " << coeffs[1] << "x^2 + " << coeffs[2] << "x + " << coeffs[3] << std::endl;
+
+    visualization_msgs::Marker Linemarker;
+    Linemarker.header.frame_id = "/map";
+    Linemarker.header.stamp = rosTime;
+    Linemarker.id = 1001;
+    Linemarker.type = visualization_msgs::Marker::LINE_STRIP;
+    Linemarker.action = visualization_msgs::Marker::ADD;
+    Linemarker.scale.x = 0.2;
+    Linemarker.color.a = 0.8;
+
+    Linemarker.ns = "midLine";
+    Linemarker.color.g = 1.0;
+    
+    for (float x = 0; x < 15.0; x += 0.5)
+    {
+        float y = coeffs[0] * x*x + coeffs[1] * x + coeffs[2];
+        geometry_msgs::Point p;
+        p.x = x;
+        p.y = y;
+        p.z = -0.5;
+        Linemarker.points.push_back(p);
+    }
+    ROI_MarkerArray->markers.push_back(Linemarker);
 
     // ROI 설정
     pcl::KdTreeFLANN<PointType> kdtreeCluster;
@@ -534,7 +531,7 @@ void Clustering::setConeROI(const pcl::PointCloud<PointType>::Ptr& input_pointCl
 /**
  ** 콘 좌우 구별
 */
-void Clustering::identifyLRcone_v2(const pcl::PointCloud<PointType>::Ptr& input_pointCloud, const pcl::PointCloud<PointType>::Ptr& output_Rcone_pointCloud, const pcl::PointCloud<PointType>::Ptr& output_Lcone_pointCloud)
+void Clustering::identifyLRcone_v2(const pcl::PointCloud<PointType>::Ptr& input_pointCloud, const pcl::PointCloud<PointType>::Ptr& output_Rcone_pointCloud, const pcl::PointCloud<PointType>::Ptr& output_Lcone_pointCloud, const std::shared_ptr<visualization_msgs::MarkerArray>&  debug_Rcone_pointCloud = nullptr, const std::shared_ptr<visualization_msgs::MarkerArray>&  debug_Lcone_pointCloud = nullptr)
 {
     pcl::PointCloud<PointType>::Ptr temp_pointCloud(new pcl::PointCloud<PointType>);
     *temp_pointCloud = *input_pointCloud;
@@ -589,6 +586,7 @@ void Clustering::identifyLRcone_v2(const pcl::PointCloud<PointType>::Ptr& input_
         backstep_RPoint.y = -0.5;
     }
 
+    // 헝가리안 알고리즘으로 포인트 1대1 할당
     for (unsigned int k = 0; k < (temp_pointCloud->points.size()-3) ; k++)
     {
         vector<PointType> LRPoint = {LPoint, RPoint};
@@ -624,6 +622,77 @@ void Clustering::identifyLRcone_v2(const pcl::PointCloud<PointType>::Ptr& input_
         RPoint.x += backstep_RPoint.x;
         RPoint.y += backstep_RPoint.y;
     }
+
+    // 불안정한 포인트 제거
+    pcl::PointCloud<PointType>::Ptr temp_Lcone_pointCloud(new pcl::PointCloud<PointType>);
+    pcl::PointCloud<PointType>::Ptr temp_Rcone_pointCloud(new pcl::PointCloud<PointType>);
+    *temp_Lcone_pointCloud = *output_Lcone_pointCloud;
+    *temp_Rcone_pointCloud = *output_Rcone_pointCloud;
+    output_Lcone_pointCloud->points.clear();
+    output_Rcone_pointCloud->points.clear();
+
+    if (output_Lcone_pointCloud->points.size() > 2) 
+    {
+        output_Lcone_pointCloud->points.resize(output_Lcone_pointCloud->points.size() - 1);
+    }
+    if (output_Rcone_pointCloud->points.size() > 2) 
+    {
+        output_Rcone_pointCloud->points.resize(output_Rcone_pointCloud->points.size() - 1);
+    }
+
+    for (PointType& point : temp_Lcone_pointCloud->points)
+    {
+        if (point.x * point.x + point.y * point.y < 36)
+        {
+            output_Lcone_pointCloud->points.push_back(point);
+        }
+    }
+    for (PointType& point : temp_Rcone_pointCloud->points)
+    {
+        if (point.x * point.x + point.y * point.y < 36)
+        {
+            output_Rcone_pointCloud->points.push_back(point);
+        }
+    }
+
+}
+
+
+//----------------------------클러스터링 전용 함수--------------------------------
+double Clustering::distance(const PointType& p1, const PointType& p2) {
+    return sqrt((p2.x - p1.x) * (p2.x - p1.x) + (p2.y - p1.y) * (p2.y - p1.y));
+}
+
+int Clustering::orientation(const PointType& p, const PointType& q, const PointType& r) {
+    double val = (q.y - p.y) * (r.x - q.x) - (q.x - p.x) * (r.y - q.y);
+    return val == 0.0 ? 0 : (val > 0.0 ? 1 : 2);
+}
+
+bool Clustering::doIntersect(PointType p1, PointType q1, PointType p2, PointType q2, double L) {
+    int o1 = orientation(p1, q1, p2);
+    int o2 = orientation(p1, q1, q2);
+    int o3 = orientation(p2, q2, p1);
+    int o4 = orientation(p2, q2, q1);
+    if (o1 != o2 && o3 != o4) {
+        double A1 = q1.y - p1.y;
+        double B1 = p1.x - q1.x;
+        double C1 = A1 * p1.x + B1 * p1.y;
+        double A2 = q2.y - p2.y;
+        double B2 = p2.x - q2.x;
+        double C2 = A2 * p2.x + B2 * p2.y;
+        double det = A1 * B2 - A2 * B1;
+        if (det != 0) {
+            double x = (B2 * C1 - B1 * C2) / det;
+            double y = (A1 * C2 - A2 * C1) / det;
+            PointType intersection;
+            intersection.x = x; intersection.y = y; intersection.z = 0;
+            if (distance(intersection, p1) >= L && distance(intersection, q1) >= L &&
+                distance(intersection, p2) >= L && distance(intersection, q2) >= L) {
+                return true;
+            }
+        }
+    }
+    return false;
 }
 
 

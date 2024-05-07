@@ -90,7 +90,7 @@ public:
      * @param input_pointCloud 자를 포인트 클라우드
      * @param output_vector 자른 포인트를 저장할 컨테이너
     */
-    void convertPCLtoVector(const pcl::PointCloud<pcl::PointXYZI>::Ptr& input_pointCloud, std::unique_ptr<std::vector<PointType>>& output_vector);
+    void convertPCLtoVector(const pcl::PointCloud<PointType>::Ptr& input_pointCloud, std::unique_ptr<std::vector<PointType>>& output_vector);
 
 
     /**
@@ -109,7 +109,7 @@ public:
 
     float distanceTwoPointPower2(std::pair<float, float> midPoint, PointType point);
 
-    bool isWithinAngle(pcl::PointXYZI point, std::pair<float, float> midPoint, float midPointAngle, float angle);
+    bool isWithinAngle(PointType point, std::pair<float, float> midPoint, float midPointAngle, float angle);
 
     int determineRegion(double a, double b, double m, double c, double d);
 };
