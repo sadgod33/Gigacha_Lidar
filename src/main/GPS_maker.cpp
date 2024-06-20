@@ -1,38 +1,42 @@
 #include <ros/ros.h>
+#include <sensor_msgs/PointCloud2.h>
 #include <geometry_msgs/PoseStamped.h>
-#include <tf/tf.h>
 
-int main(int argc, char **argv) {
-    ros::init(argc, argv, "GPS_maker");
+ros::Publisher pose_pub;
+
+void pointCloudCallback(const sensor_msgs::PointCloud2::ConstPtr& msg)
+{
+    // PoseStamped 메시지 생성
+    geometry_msgs::PoseStamped pose_msg;
+    pose_msg.header.stamp = msg->header.stamp; // PointCloud2 메시지의 타임스탬프 사용
+    pose_msg.header.frame_id = "base_link";
+
+    // Pose 데이터 설정 (필요한 데이터로 변경 가능)
+    pose_msg.pose.position.x = 0.0;
+    pose_msg.pose.position.y = 0.0;
+    pose_msg.pose.position.z = 0.0;
+    pose_msg.pose.orientation.x = 0.0;
+    pose_msg.pose.orientation.y = 0.0;
+    pose_msg.pose.orientation.z = 0.0;
+    pose_msg.pose.orientation.w = 1.0;
+
+    // 메시지 publish
+    pose_pub.publish(pose_msg);
+}
+
+int main(int argc, char** argv)
+{
+    ros::init(argc, argv, "pose_publisher");
     ros::NodeHandle nh;
 
-    // "/local_msgs_to_vision" 토픽에 PoseStamped 메시지를 발행하는 퍼블리셔를 설정합니다.
-    ros::Publisher local_msgs_pub = nh.advertise<geometry_msgs::PoseStamped>("/local_msgs_to_vision", 1000);
+    // Publisher 설정
+    pose_pub = nh.advertise<geometry_msgs::PoseStamped>("/local_msgs_to_vision", 10);
 
-    ros::Rate loop_rate(10); // 10 Hz
+    // Subscriber 설정
+    ros::Subscriber pointcloud_sub = nh.subscribe("/os_cloud_node/points", 10, pointCloudCallback);
 
-    while (ros::ok()) {
-        geometry_msgs::PoseStamped msg;
-        msg.header.stamp = ros::Time::now();
-        msg.header.frame_id = "base_link";
-
-        // 임의의 위치와 자세(오리엔테이션) 값을 생성
-        msg.pose.position.x = rand() % 100 - 50;  // -50에서 49 사이의 값
-        msg.pose.position.y = rand() % 100 - 50;
-        msg.pose.position.z = rand() % 100 - 50;
-
-        tf::Quaternion q = tf::createQuaternionFromYaw((double)(rand() % 360) * M_PI/180);
-        msg.pose.orientation.x = q.x();
-        msg.pose.orientation.y = q.y();
-        msg.pose.orientation.z = q.z();
-        msg.pose.orientation.w = q.w();
-
-        // 메시지를 발행합니다.
-        local_msgs_pub.publish(msg);
-
-        ros::spinOnce();
-        loop_rate.sleep();
-    }
+    // ROS 루프 시작
+    ros::spin();
 
     return 0;
 }

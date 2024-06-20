@@ -25,6 +25,9 @@ public:
 
     void getAngle1to5(const pcl::PointCloud<PointType>::Ptr& input_pointCloud, const std::shared_ptr<visualization_msgs::MarkerArray>& output_markerArray);
 
+    void getFullCloud(const pcl::PointCloud<PointType>::Ptr& input_pointCloud, const pcl::PointCloud<PointType>::Ptr& output_pointCloud, const pcl::PointCloud<PointType>::Ptr& output_infoCloud);
+
+
     /**
      * @brief InterestCloud를 생성한다.
      * @param 과정: (범위 지정)
@@ -42,6 +45,12 @@ public:
      * @param xyz_threshold 포인트 클라우드를 자를 범위
     */
     void getFovCloud(const pcl::PointCloud<PointType>::Ptr& input_pointCloud, const pcl::PointCloud<PointType>::Ptr& output_pointCloud, const std::pair<double, double> x_threshold, const std::pair<double, double> y_threshold, const std::pair<double, double> z_threshold, const std::pair<float,  float > xy_angle_threshold);
+
+
+    void getTransformedClouds(const pcl::PointCloud<PointType>::Ptr& input_pointCloud, const pcl::PointCloud<PointType>::Ptr& output_pointCloud);
+
+
+    void getGrdRemovalClouds(const pcl::PointCloud<PointType>::Ptr& input_pointCloud, const pcl::PointCloud<PointType>::Ptr& groundCloud, const pcl::PointCloud<PointType>::Ptr& nongroundCloud, const std::pair<double, double> grdRemoval_threshold);
 
     /**
      * @brief Tob view의 시각에 맞춰 포인트 클라우드를 3d에서 2d로 변환한다.
@@ -61,17 +70,13 @@ public:
      * @param output_pointCloud 가공 후 저장할 포인트 클라우드
     */
     void getConeClusterCloud(const pcl::PointCloud<PointType>::Ptr& input_pointCloud, const pcl::PointCloud<PointType>::Ptr& output_pointCloud);
-    void getObjectClusterCloud(const pcl::PointCloud<PointType>::Ptr& input_pointCloud, const std::shared_ptr<visualization_msgs::MarkerArray>& smallObject_MarkerArray, const std::shared_ptr<visualization_msgs::MarkerArray>& bigObject_MarkerArray, const pcl::PointCloud<PointType>::Ptr& debug_pointCloud);
-
+    void getObjectClusterCloud(const pcl::PointCloud<PointType>::Ptr& input_pointCloud, const std::shared_ptr<std::vector<pcl::PointCloud<PointType>::Ptr>>& smallObject_Cloud_vector, const std::shared_ptr<std::vector<pcl::PointCloud<PointType>::Ptr>>& bigObject_Cloud_vector);
+    void getObjectMarkers(const std::shared_ptr<std::vector<pcl::PointCloud<PointType>::Ptr>>& bigObject_Cloud_vector, const std::shared_ptr<visualization_msgs::MarkerArray>& markerarray, const std::shared_ptr<visualization_msgs::MarkerArray>& markerarray_vis);
     void getSavedClusterCloud(const pcl::PointCloud<PointType>::Ptr& input_pointCloud, const pcl::PointCloud<PointType>::Ptr& output_pointCloud, const pcl::PointCloud<PointType>::Ptr& debug_pointCloud);
 
     void getconeROICloud(const pcl::PointCloud<PointType>::Ptr& input_pointCloud, const pcl::PointCloud<PointType>::Ptr& output_pointCloud, const std::shared_ptr<visualization_msgs::MarkerArray>& ROI_MarkerArray);
 
     void getLRconeCloud(const pcl::PointCloud<PointType>::Ptr& input_pointCloud, const pcl::PointCloud<PointType>::Ptr& output_Rcone_pointCloud, const pcl::PointCloud<PointType>::Ptr& output_Lcone_pointCloud, const std::shared_ptr<visualization_msgs::MarkerArray>&  debug_Rcone_pointCloud, const std::shared_ptr<visualization_msgs::MarkerArray>&  debug_Lcone_pointCloud);
-
-
-    void getLinearLRconeCloud(const pcl::PointCloud<PointType>::Ptr& input_pointCloud, pcl::PointCloud<PointType>::Ptr& output_Rcone_pointCloud, pcl::PointCloud<PointType>::Ptr& output_Lcone_pointCloud);
-
 
     /**
      * @brief ROICloud를 생성한다.

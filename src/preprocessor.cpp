@@ -47,13 +47,12 @@ void Preprocessor::removeBody(const pcl::PointCloud<PointType>::Ptr& input_point
  * @param input_point 자를 포인트 
  * @param output_pointCloud 자른 포인트를 저장할 포인트 클라우드
 */
-void Preprocessor::convertLidartoGPS(const pcl::PointCloud<PointType>::Ptr& input_pointCloud, const pcl::PointCloud<PointType>::Ptr& output_pointCloud)
+void Preprocessor::calibrateLidar(const pcl::PointCloud<PointType>::Ptr& input_pointCloud, const pcl::PointCloud<PointType>::Ptr& output_pointCloud, float Yangle)
 {
-    for (PointType& point : input_pointCloud->points)
-    {
-        point.x -= LI_TO_GPS_X;
-        output_pointCloud->points.push_back(point);
-    }
+    Eigen::Affine3f transform = Eigen::Affine3f::Identity();
+    transform.rotate(Eigen::AngleAxisf(Yangle * M_PI / 180.0, Eigen::Vector3f::UnitY()));
+    transform.translation() << LI_TO_GPS_X, 0.0, 0.0;
+    pcl::transformPointCloud(*input_pointCloud, *output_pointCloud, transform);
 }
 
 
@@ -158,29 +157,6 @@ void Preprocessor::cutPointCloud(const pcl::PointCloud<PointType>::Ptr& input_po
         if(x_threshold.first < point.x && point.x < x_threshold.second &&
            y_threshold.first < point.y && point.y < y_threshold.second &&
            z_threshold.first < point.z && point.z < z_threshold.second)
-        {
-            output_pointCloud->points.push_back(point);
-        }
-    }
-}
-
-
-/**
- * @brief x, y, z 범위 만큼 자른다.
- * @param input_point 자를 포인트 
- * @param output_pointCloud 자른 포인트를 저장할 포인트 클라우드
- * @param xyz_threshold 포인트를 자를 범위 (최대값: -99999, 최소값: 99999)
-*/
-void Preprocessor::leavePointCloud(const pcl::PointCloud<PointType>::Ptr& input_pointCloud,
-                                 const pcl::PointCloud<PointType>::Ptr& output_pointCloud,
-                                 const std::pair<double, double>       x_threshold, 
-                                 const std::pair<double, double>       y_threshold, 
-                                 const std::pair<double, double>       z_threshold)
-{
-    for(const PointType& point : input_pointCloud->points){
-        if((x_threshold.first > point.x && point.x > x_threshold.second) &&
-           (y_threshold.first > point.y && point.y > y_threshold.second) &&
-           (z_threshold.first > point.z && point.z > z_threshold.second))
         {
             output_pointCloud->points.push_back(point);
         }

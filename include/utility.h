@@ -74,7 +74,7 @@ using namespace std;
         (uint32_t, t, t) (uint16_t, reflectivity, reflectivity)
         (uint8_t, ring, ring) (uint16_t, noise, noise) (uint32_t, range, range)
     )
-
+    using PointXYZIRT = OusterPointXYZIRT;
 
 // 객체 저장 포인터 클라우드 선언
     extern pcl::PointCloud<PointType>::Ptr clusterStopOver;
@@ -98,7 +98,7 @@ using namespace std;
     extern double ego_y;
     extern double ego_heading_deg;  // 각도
     extern double ego_heading_rad;  // 라디안
-    void setEgo(const geometry_msgs::PoseStampedConstPtr& poseMsg);
+    void setEgo(const geometry_msgs::PoseStampedConstPtr& poseMsg, geometry_msgs::PoseStamped& local);
 
     // 터널에서 해딩값을 구해 전역 상수로 저장
     std::tuple<double, int> setHeadingInTunnel(const pcl::PointCloud<PointType>::Ptr& input_pointCloud, const std::pair<double, double> x_threshold, const std::pair<double, double> y_threshold, const std::pair<double, double> z_threshold);
@@ -133,5 +133,20 @@ using namespace std;
         void update(Eigen::Vector2f measurement);
     };  
 
+
+    
+    std::tuple<double, double, double, double> euler_to_quaternion(const double &theta);
+
+    double endpoint_distance(const PointType &point, const std::pair<double, double> minpoint, const std::pair<double, double> maxpoint);
+
+    std::tuple<double, double> find_position(const pcl::PointCloud<PointType> &cloud, double threshold, double min_y, double max_y, double theta);
+
+    bool compare(std::pair<float, float> a, std::pair<float, float> b);
+
+    double variance_criterion(const cv::Mat& c1, const cv::Mat& c2);
+
+    std::tuple<double, double, double, double> get_best_theta(const pcl::PointCloud<PointType> &cloud);
+
+    visualization_msgs::Marker bbox_3d(const pcl::PointCloud<PointType> &cloud, const double &heading, const double &enu_x,const double &enu_y, const int &Id);
 
 #endif // UTILITY_H

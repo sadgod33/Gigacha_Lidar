@@ -112,6 +112,62 @@ void PointCloudGenerator::getAngle1to5(const pcl::PointCloud<PointType>::Ptr& in
 
 }
 
+void PointCloudGenerator::getFullCloud(const pcl::PointCloud<PointType>::Ptr& input_pointCloud, const pcl::PointCloud<PointType>::Ptr& output_pointCloud, const pcl::PointCloud<PointType>::Ptr& output_infoCloud)
+{
+float verticalAngle, horizonAngle, range, intensity;
+    size_t rowIdn, columnIdn, index;
+    PointType thisPoint;
+
+    int fullcnt = 0;
+    int resultcnt = 0;
+
+    // output_pointCloud와 output_infoCloud의 크기를 미리 설정
+    output_pointCloud->points.resize(N_SCAN * Horizon_SCAN);
+    output_infoCloud->points.resize(N_SCAN * Horizon_SCAN);
+
+    for (const PointType& point : input_pointCloud->points) {
+        fullcnt++;
+        thisPoint.x = point.x;
+        thisPoint.y = point.y;
+        thisPoint.z = point.z;
+
+        verticalAngle = atan2(thisPoint.z, sqrt(thisPoint.x*thisPoint.x + thisPoint.y*thisPoint.y)) * RAD_TO_DEG;
+        rowIdn = (verticalAngle + ang_bottom) / ang_res_y;
+        if (rowIdn < 0 || rowIdn >= N_SCAN)
+            continue;
+        horizonAngle = atan2(thisPoint.x, thisPoint.y) * RAD_TO_DEG;
+        columnIdn = -round((horizonAngle-90.0)/ang_res_x) + Horizon_SCAN/2;
+        if (columnIdn >= Horizon_SCAN)
+            columnIdn -= Horizon_SCAN;
+        if (columnIdn < 0 || columnIdn >= Horizon_SCAN)
+            continue;
+        range = sqrt(thisPoint.x*thisPoint.x + thisPoint.y*thisPoint.y + thisPoint.z*thisPoint.z);
+        if (range < 0.6 && thisPoint.x < 0.1){
+            continue;
+        }
+
+        resultcnt++;
+        
+        thisPoint.intensity = (float)rowIdn + (float)columnIdn / 10000.0;
+        
+        // FullCloud
+        index = columnIdn  + rowIdn * Horizon_SCAN;
+        if (index >= output_pointCloud->points.size()) {
+            ROS_WARN("Index out of range: %lu", index);
+            continue;
+        }
+        output_pointCloud->points[index] = thisPoint;
+
+        // FullInfo
+        if (index >= output_infoCloud->points.size()) {
+            ROS_WARN("Index out of range: %lu", index);
+            continue;
+        }
+        output_infoCloud->points[index] = thisPoint;
+        output_infoCloud->points[index].intensity = range;
+    }
+}
+
 
 /**
  * @brief InterestCloud를 생성한다.
@@ -147,6 +203,88 @@ void PointCloudGenerator::getFovCloud(const pcl::PointCloud<PointType>::Ptr& inp
 { 
     output_pointCloud->clear();
     preprocessor.cutPointCloud(input_pointCloud, output_pointCloud, x_threshold, y_threshold, z_threshold, xy_angle_threshold);
+        for (PointType& point : output_pointCloud->points) 
+    {
+        point.x -= 1.35;
+    }
+}
+
+
+void PointCloudGenerator::getGrdRemovalClouds(const pcl::PointCloud<PointType>::Ptr& input_pointCloud, 
+                                              const pcl::PointCloud<PointType>::Ptr& groundCloud,
+                                              const pcl::PointCloud<PointType>::Ptr& nongroundCloud,
+                                              const std::pair<double, double>        grdRemoval_threshold)
+{
+    size_t lowerInd, upperInd;
+    float diffX, diffY, diffZ, angle;
+    cv::Mat groundMat = cv::Mat(N_SCAN, Horizon_SCAN, CV_8S, cv::Scalar::all(0));
+    // groundMat
+    // -1, no valid info to check if ground of not
+    //  0, initial value, after validation, means not ground
+    //  1, ground
+    for (size_t j = 0; j < Horizon_SCAN; ++j){
+        for (size_t i = 0; i < groundScanInd; ++i){
+
+            lowerInd = j + ( i )*Horizon_SCAN;
+            upperInd = j + (i+1)*Horizon_SCAN;
+
+            diffX = input_pointCloud->points[upperInd].x - input_pointCloud->points[lowerInd].x;
+            diffY = input_pointCloud->points[upperInd].y - input_pointCloud->points[lowerInd].y;
+            diffZ = input_pointCloud->points[upperInd].z - input_pointCloud->points[lowerInd].z;
+
+            angle = atan2(diffZ, sqrt(diffX*diffX + diffY*diffY) ) * RAD_TO_DEG;
+
+            if (abs(angle) <= grdRemoval_threshold.first && input_pointCloud->points[lowerInd].z < grdRemoval_threshold.second){
+                groundMat.at<int8_t>(i,j) = 1;
+                groundMat.at<int8_t>(i+1,j) = 1;
+            }
+
+            else {
+                upperInd = j + (i + 2) * Horizon_SCAN;
+                if (input_pointCloud->points[lowerInd].intensity == -1 ||
+                    input_pointCloud->points[upperInd].intensity == -1) {
+                    groundMat.at<int8_t>(i, j) = -1;
+                    continue;
+                }
+                diffX = input_pointCloud->points[upperInd].x - input_pointCloud->points[lowerInd].x;
+                diffY = input_pointCloud->points[upperInd].y - input_pointCloud->points[lowerInd].y;
+                diffZ = input_pointCloud->points[upperInd].z - input_pointCloud->points[lowerInd].z;
+
+                angle = angle = atan2(diffZ, sqrt(diffX * diffX + diffY * diffY)) * RAD_TO_DEG;
+
+                if ((abs(angle) <= grdRemoval_threshold.first && input_pointCloud->points[lowerInd].z < grdRemoval_threshold.second) || (isnan(angle) && input_pointCloud->points[lowerInd].z < grdRemoval_threshold.second)) {
+                    groundMat.at<int8_t>(i, j) = 1;
+                    groundMat.at<int8_t>(i + 2, j) = 1;
+                }
+            }
+        }
+    }
+
+    for (size_t i = 0; i <= groundScanInd; ++i){
+        for (size_t j = 0; j < Horizon_SCAN; ++j){
+            if (groundMat.at<int8_t>(i,j) == 1){
+                groundCloud->push_back(input_pointCloud->points[j + i*Horizon_SCAN]);
+            }
+            else{
+                nongroundCloud->push_back(input_pointCloud->points[j + i*Horizon_SCAN]);
+            }
+                
+        }
+    }
+}
+
+
+/**
+ * @details 포인트를 절대좌표계로 전환
+*/
+void PointCloudGenerator::getTransformedClouds(const pcl::PointCloud<PointType>::Ptr& input_pointCloud, 
+                                               const pcl::PointCloud<PointType>::Ptr& output_pointCloud)
+{
+    Eigen::Affine3f transform = Eigen::Affine3f::Identity();
+    transform.rotate(Eigen::AngleAxisf(ego_heading_rad, Eigen::Vector3f::UnitZ()));
+    transform.translation() << ego_x, ego_y, 0.0;
+
+    pcl::transformPointCloud(*input_pointCloud, *output_pointCloud, transform);
 }
 
 
@@ -181,15 +319,23 @@ void PointCloudGenerator::getConeClusterCloud(const pcl::PointCloud<PointType>::
  * @brief 다목적 장애물을 클러스터링한다.
 */
 void PointCloudGenerator::getObjectClusterCloud(const pcl::PointCloud<PointType>::Ptr& input_pointCloud,
-                                                  const std::shared_ptr<visualization_msgs::MarkerArray>& smallObject_MarkerArray,
-                                                  const std::shared_ptr<visualization_msgs::MarkerArray>& bigObject_MarkerArray,
-                                                  const pcl::PointCloud<PointType>::Ptr& debug_pointCloud)
+                                                const std::shared_ptr<std::vector<pcl::PointCloud<PointType>::Ptr>>& smallObject_Cloud_vector,
+                                                const std::shared_ptr<std::vector<pcl::PointCloud<PointType>::Ptr>>& bigObject_Cloud_vector)
 {
-    debug_pointCloud->clear();
-    smallObject_MarkerArray->markers.clear();
-    bigObject_MarkerArray->markers.clear();
+    smallObject_Cloud_vector->clear();
+    bigObject_Cloud_vector->clear();
 
-    clustering.clusterObject(input_pointCloud, smallObject_MarkerArray, bigObject_MarkerArray, debug_pointCloud);
+    clustering.clusterObject(input_pointCloud, smallObject_Cloud_vector, bigObject_Cloud_vector);
+}
+
+/**
+ * @brief 큰 오브젝트(차량)의 위치 및 해딩등을 마커화한다
+*/
+void PointCloudGenerator::getObjectMarkers(const std::shared_ptr<std::vector<pcl::PointCloud<PointType>::Ptr>>& bigObject_Cloud_vector, 
+                                                const std::shared_ptr<visualization_msgs::MarkerArray>& markerarray, 
+                                                const std::shared_ptr<visualization_msgs::MarkerArray>& markerarray_vis)
+{
+    clustering.processObject(bigObject_Cloud_vector, markerarray, markerarray_vis);
 }
 
 
@@ -301,3 +447,5 @@ void PointCloudGenerator::getROICloud(const pcl::PointCloud<PointType>::Ptr& inp
         output_pointCloud->points.push_back(input_pointCloud->points[idx]);
     }
 }
+
+

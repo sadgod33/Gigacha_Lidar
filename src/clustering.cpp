@@ -4,13 +4,223 @@
 /**
  ** 다목적 클러스터링
 */
+
+void Clustering::clusterObject(const pcl::PointCloud<PointType>::Ptr& input_pointCloud, const std::shared_ptr<std::vector<pcl::PointCloud<PointType>::Ptr>>& smallObject_Cloud_vector, const std::shared_ptr<std::vector<pcl::PointCloud<PointType>::Ptr>>& bigObject_Cloud_vector)
+{
+// 다운샘플링
+    pcl::PointCloud<PointType>::Ptr downsample_pointCloud(new pcl::PointCloud<PointType>);
+    pcl::VoxelGrid<PointType> voxelGrid;
+    voxelGrid.setInputCloud(input_pointCloud);
+    voxelGrid.setLeafSize(0.1f, 0.1f, 0.1f);
+    voxelGrid.filter(*downsample_pointCloud);
+
+// 벽면제거
+    float z_threshold = 1.7 + LI_TO_GND_Z;  // 차량의 높이보다 좀 높아야됨
+    float xy_tolerance = 0.3;  // 벽면 제거를 위한 x, y 좌표의 제거 범위
+    pcl::PassThrough<PointType> pass;
+    pass.setInputCloud(downsample_pointCloud);
+    pass.setFilterFieldName("z");
+    pass.setFilterLimits(z_threshold, std::numeric_limits<float>::max());
+    pcl::PointIndices::Ptr wall_indices(new pcl::PointIndices());
+    pass.filter(wall_indices->indices);
+
+    // 벽 포인트의 x, y 범위 내 포인트 제거
+    std::set<int> indices_to_remove;
+    for (int index : wall_indices->indices) {
+        PointType wall_point = downsample_pointCloud->points[index];
+
+        for (size_t i = 0; i < downsample_pointCloud->points.size(); ++i) {
+            if (std::abs(downsample_pointCloud->points[i].x - wall_point.x) <= xy_tolerance &&
+                std::abs(downsample_pointCloud->points[i].y - wall_point.y) <= xy_tolerance &&
+                downsample_pointCloud->points[i].z < wall_point.z) {
+                indices_to_remove.insert(i);
+            }
+        }
+    }
+
+    // 중복을 제거한 인덱스를 사용하여 포인트 제거
+    pcl::PointIndices::Ptr final_indices(new pcl::PointIndices());
+    final_indices->indices.assign(indices_to_remove.begin(), indices_to_remove.end());
+
+    pcl::PointCloud<PointType>::Ptr noWall_PointCloud(new pcl::PointCloud<PointType>);
+    pcl::ExtractIndices<PointType> extract;
+    if (!downsample_pointCloud->points.empty() && !final_indices->indices.empty()) {
+        extract.setInputCloud(downsample_pointCloud);
+        extract.setIndices(final_indices);
+        extract.setNegative(true);
+        extract.filter(*noWall_PointCloud);
+    } else {
+        // 에러 처리 또는 빈 클라우드 처리
+        std::cout << "No points to process after filtering." << std::endl;
+    }
+    pcl::PointCloud<PointType>::Ptr preprocessed_pointCloud(new pcl::PointCloud<PointType>);
+    *preprocessed_pointCloud = *noWall_PointCloud;
+    
+    pcl::PointCloud<pcl::Normal>::Ptr normals(new pcl::PointCloud<pcl::Normal>);
+    pcl::search::KdTree<PointType>::Ptr tree(new pcl::search::KdTree<PointType>());
+
+   // 노멀 계산을 위한 Normal Estimation 객체 생성
+    pcl::NormalEstimation<PointType, pcl::Normal> normal_estimator;
+    normal_estimator.setSearchMethod(tree);
+    normal_estimator.setInputCloud(preprocessed_pointCloud);
+    normal_estimator.setKSearch(30);  // 인접 포인트 수 설정
+    normal_estimator.compute(*normals);
+
+    // Region Growing 알고리즘 설정
+    pcl::RegionGrowing<PointType, pcl::Normal> reg;
+    reg.setMinClusterSize(50);
+    reg.setMaxClusterSize(500);
+    reg.setSearchMethod(tree);
+    reg.setNumberOfNeighbours(30);  // 인접한 포인트 수
+    reg.setInputCloud(preprocessed_pointCloud);
+    reg.setInputNormals(normals);
+    reg.setSmoothnessThreshold(30.0 / 180.0 * M_PI);  // 곡률 임계값
+    reg.setCurvatureThreshold(3.0);  // 곡률 임계값
+
+    std::vector<pcl::PointIndices> clusterIndices;
+    reg.extract(clusterIndices);
+    
+    
+// 각 클러스터의 포인트 클라우드를 컨테이너에 저장
+    PointType clusterPoint;
+    float diagonal = -1;
+    int markerId = 0;
+    if (preprocessed_pointCloud->points.size() > 0){
+
+        // 각 클러스터를 output_pointCloud_vector에 저장
+        for(pcl::PointIndices& clusterIdx : clusterIndices)
+        {
+            // x, y의 최대값 최소값 저장 포인트
+            PointType minXPoint, maxXPoint, minYPoint, maxYPoint, maxZPoint;
+            minXPoint.x = minXPoint.y = minXPoint.z = std::numeric_limits<float>::max();
+            maxXPoint.x = maxXPoint.y = maxXPoint.z = std::numeric_limits<float>::lowest();
+            minYPoint.x = minYPoint.y = minYPoint.z = std::numeric_limits<float>::max();
+            maxYPoint.x = maxYPoint.y = maxYPoint.z = std::numeric_limits<float>::lowest();
+            maxZPoint.x = maxZPoint.y = maxZPoint.z = std::numeric_limits<float>::lowest();
+
+            // 받은 인덱스의 포인트의 평균
+            clusterPoint.x = 0.0; clusterPoint.y = 0.0; clusterPoint.z = 0.0;
+            for(int& index : clusterIdx.indices)
+            { 
+                PointType point = preprocessed_pointCloud->points[index];
+                point.z = 0;
+                if (point.x > maxXPoint.x) maxXPoint = point;
+                if (point.x < minXPoint.x) minXPoint = point;
+                if (point.y > maxYPoint.y) maxYPoint = point;
+                if (point.y < minYPoint.y) minYPoint = point;
+                if (point.z > maxZPoint.z) maxZPoint = point;
+
+                clusterPoint.x += point.x;
+                clusterPoint.y += point.y;
+            }
+            std::cout << "maxX: " << maxXPoint.x << " minX: " << minXPoint.x << std::endl;
+            std::cout << "maxY: " << maxYPoint.y << " minY: " << minYPoint.y << std::endl;
+
+            clusterPoint.x /= clusterIdx.indices.size();
+            clusterPoint.y /= clusterIdx.indices.size();
+
+            float scaleX = maxXPoint.x - minXPoint.x;
+            float scaleY = maxYPoint.y - minYPoint.y;
+
+            // 큰 장애물
+            if (((1.5 < scaleX && scaleX < 4.5) && (0.5 < scaleY && scaleY < 4.5)) || 
+                ((1.5 < scaleY && scaleY < 4.5) && (0.5 < scaleX && scaleX < 4.5)))
+            {
+                if (maxZPoint.z + LI_TO_GND_Z > 2.3) 
+                {
+                    continue;
+                }
+                pcl::PointCloud<PointType>::Ptr ClusterCloud (new pcl::PointCloud<PointType>);
+
+                for(int& index : clusterIdx.indices)
+                { 
+                    PointType pt = preprocessed_pointCloud->points[index];
+                    ClusterCloud->points.push_back(pt);
+                }
+
+                ClusterCloud->width = ClusterCloud->points.size();
+                ClusterCloud->height = 1;
+                ClusterCloud->is_dense = true;
+
+                bigObject_Cloud_vector->push_back(ClusterCloud);
+            } 
+
+            // 작은 장애물
+                // 조건에 따른 추가 바람
+        }
+    }
+}
+
+
+void Clustering::processObject(const std::shared_ptr<std::vector<pcl::PointCloud<PointType>::Ptr>>& input_pointClouds, const std::shared_ptr<visualization_msgs::MarkerArray>& markerarray, const std::shared_ptr<visualization_msgs::MarkerArray>& markerarray_vis)
+{
+    int Id = 0;
+    visualization_msgs::Marker marker;
+    for (pcl::PointCloud<PointType>::Ptr cluster : *input_pointClouds){
+        PointType minPoint, maxPoint;
+        pcl::getMinMax3D(*cluster, minPoint, maxPoint);
+        ++Id;
+        double ori_x, ori_y, ori_z, ori_w,r, theta_avg, mean_y, mean_x,mid_x, mid_y, thetas, theta, pos_x, pos_y, Lshape_fitting_cost;
+        std::tie(theta, mean_x, mean_y, Lshape_fitting_cost) = get_best_theta(*cluster);
+        cout << "This Object's cost is " << Lshape_fitting_cost << endl; 
+
+        visualization_msgs::Marker bbox;
+        bbox = bbox_3d(*cluster, ego_heading_deg, ego_x, ego_y, Id);
+        marker.header.frame_id = "base_link";
+        marker.header.stamp = ros::Time::now();
+        marker.type = visualization_msgs::Marker::CUBE;
+        marker.action = visualization_msgs::Marker::ADD;
+
+        pos_x = mean_x*cos(-ego_heading_rad) + mean_y*sin(-ego_heading_rad);
+        pos_y = -mean_x*sin(-ego_heading_rad) + mean_y*cos(-ego_heading_rad);
+        float range = sqrt(pos_x*pos_x + pos_y*pos_y);
+
+        marker.pose.position.x = pos_x + ego_x;
+        marker.pose.position.y = pos_y + ego_y;
+        marker.pose.position.z = (maxPoint.z + minPoint.z) / 2;
+
+        if (range < 5)
+        {
+            tf::Quaternion quaternion = tf::createQuaternionFromYaw(theta*DEG_TO_RAD);
+            marker.pose.orientation.x = quaternion.x();
+            marker.pose.orientation.y = quaternion.y();
+            marker.pose.orientation.z = quaternion.z();
+            marker.pose.orientation.w = quaternion.w();
+        }
+        else
+        {
+            marker.pose.orientation.x = 0;
+            marker.pose.orientation.y = 0;
+            marker.pose.orientation.z = 0;
+            marker.pose.orientation.w = 0;
+        }
+        
+        marker.scale.x = fabs(maxPoint.x - minPoint.x);
+        marker.scale.y = fabs(maxPoint.y - minPoint.y);
+        marker.scale.z = fabs(maxPoint.z - minPoint.z);
+
+        marker.color.r = 0.8;
+        marker.color.g = 0.8;
+        marker.color.b = 0.8;
+        marker.color.a = 1.0;
+        marker.id = Id;
+        marker.lifetime = ros::Duration(0.1);
+
+        markerarray->markers.push_back(marker);
+        markerarray_vis->markers.push_back(bbox);
+        
+    }
+}
+
+
+/*
 void Clustering::clusterObject(const pcl::PointCloud<PointType>::Ptr& input_pointCloud, const std::shared_ptr<visualization_msgs::MarkerArray>& smallObject_MarkerArray, const std::shared_ptr<visualization_msgs::MarkerArray>& bigObject_MarkerArray, const pcl::PointCloud<PointType>::Ptr& debug_pointCloud)
 {
 // 다운샘플링
     pcl::PointCloud<PointType>::Ptr downsample_pointCloud(new pcl::PointCloud<PointType>);
     pcl::VoxelGrid<PointType> voxelGrid;
     voxelGrid.setInputCloud(input_pointCloud);
-    voxelGrid.setLeafSize(0.1, 0.1, 0.1);
+    voxelGrid.setLeafSize(0.1f, 0.1f, 0.1f);
     voxelGrid.filter(*downsample_pointCloud);
 
 // 벽면제거
@@ -124,6 +334,7 @@ void Clustering::clusterObject(const pcl::PointCloud<PointType>::Ptr& input_poin
         float scaleX = maxXPoint.x - minXPoint.x;
         float scaleY = maxYPoint.y - minYPoint.y;
 
+        // 큰 장애물
         if (((1.5 < scaleX && scaleX < 4.5) && (0.5 < scaleY && scaleY < 4.5)) || 
             ((1.5 < scaleY && scaleY < 4.5) && (0.5 < scaleX && scaleX < 4.5)))
         {
@@ -154,82 +365,14 @@ void Clustering::clusterObject(const pcl::PointCloud<PointType>::Ptr& input_poin
 
             // 큰 장애물 MarkerArray에 추가
             bigObject_MarkerArray->markers.push_back(carMarker);
-        }
+        } 
+        // 작은 장애물
 
-        /*
-        // 일정 크기 이상일 시 자동차라고 인식
-        if ((((maxX-minX) > 1) || ((maxY-minY) > 1)) && clusterIdx.indices.size() > 100)
-        {
-            cornerMtx->at(0) = maxXPoint;
-            cornerMtx->at(1) = minXPoint;
-            cornerMtx->at(2) = maxYPoint;
-            cornerMtx->at(3) = minYPoint;
-            
-            // 보이는 차량이 좌측에 있거나, 우측에 있을때
-            if (std::abs(clusterPoint.y) > 1.3)
-            {
-                // 가장 가까운 모서리 3개 순서대로 찾기
-                PointType closestPoint[3];
-                float distances[3] = {std::numeric_limits<float>::max(), std::numeric_limits<float>::max(), std::numeric_limits<float>::max()};
-                for (int i = 0; i < 4; i++) {
-                    float dis = pow(cornerMtx->at(i).x, 2) + pow(cornerMtx->at(i).y, 2);
-                    for (int j = 2; j >= 0; j--) {
-                        if (dis < distances[j]) {
-                            if (j < 2) { // 현재보다 작은 값들을 한 칸씩 뒤로 밀기
-                                distances[j+1] = distances[j];
-                                closestPoints[j+1] = closestPoints[j];
-                            }
-                            distances[j] = dis;
-                            closestPoints[j] = cornerMtx[i];
-                            break; // 최소 거리를 찾았으므로 루프 탈출
-                        }
-                    }
-                }
-                
-                // 차량이 좌측에 위치한다면
-                if (clusterPoint.y > 0)
-                {
-                    closestPoint.
-                }
-            }
-            // 전방 앞에 있을때 차량의 크기는 4600mm x 1900mm x 1700mm를 기준으로 잡음
-            else
-            {
-                marker.pose.position.x = clusterPoint.x;
-                marker.pose.position.y = clusterPoint.y + CAR_SIZE_Y/2;
-                marker.pose.position.z = CAR_SIZE_Z/2;
-                marker.scale.x = CAR_SIZE_X;
-                marker.scale.y = CAR_SIZE_Y;
-                marker.scale.z = CAR_SIZE_Z;
-            }
+        
 
-            //차량의 대각선 성분을 찾기 위해서 순회
-            for (int i = 0; i < 4; i++)
-            {
-                for (int j = i; j < 4; j++)
-                {
-                    float dis = pow(cornerMtx->at(i).x - cornerMtx->(j).x, 2) - pow(cornerMtx->at(i).y - cornerMtx->(j).y, 2);
-                    if (dis > digonal)
-                    {
-                        if (maxYPoint->(i).y <= minXPoint.y)
-                        {
-                            
-                        }
-                    }
-                }
-            }
-            if (diagonal < ())
-            continue;
-        }
-        // 그 외는 작은 물체로 인식
-        else
-        {
-            smallObject_MarkerArray->markers.push_back(clusterPoint);
-        }
-        */
     }
 }
-
+*/
 /** 
  ** 콘 전용 클러스터링
 */

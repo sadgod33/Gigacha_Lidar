@@ -10,11 +10,8 @@ public:
 
     void removeBody(const pcl::PointCloud<PointType>::Ptr& input_pointCloud, const pcl::PointCloud<PointType>::Ptr& output_pointCloud);
 
-    /**
-     * @brief 상대좌표 기준을 라이다에서 GPS로 이동한다.
-     * @param input_pointCloud 가공할 포인트 클라우드
-    */
-    void convertLidartoGPS(const pcl::PointCloud<PointType>::Ptr& input_pointCloud, const pcl::PointCloud<PointType>::Ptr& output_pointCloud);
+    void calibrateLidar(const pcl::PointCloud<PointType>::Ptr& input_pointCloud, const pcl::PointCloud<PointType>::Ptr& output_pointCloud, float Yangle);
+
 
     /**
      * @brief 결측치를 제거한다.
@@ -57,13 +54,6 @@ public:
      * @param xyz_threshold 포인트를 자를 범위 (최대값: -99999, 최소값: 99999)
     */
     void cutPointCloud(const pcl::PointCloud<PointType>::Ptr& input_pointCloud,
-                       const pcl::PointCloud<PointType>::Ptr& output_pointCloud,
-                       const std::pair<double, double>       x_threshold, 
-                       const std::pair<double, double>       y_threshold, 
-                       const std::pair<double, double>       z_threshold);
-
-    
-    void leavePointCloud(const pcl::PointCloud<PointType>::Ptr& input_pointCloud,
                        const pcl::PointCloud<PointType>::Ptr& output_pointCloud,
                        const std::pair<double, double>       x_threshold, 
                        const std::pair<double, double>       y_threshold, 
