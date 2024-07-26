@@ -1,0 +1,79 @@
+[ 36%] Building CXX object visualization/CMakeFiles/pcl_visualization.dir/src/image_viewer.cpp.o
+cc1plus: warning: ‘-Wabi’ won’t warn about anything [-Wabi]
+cc1plus: note: ‘-Wabi’ warns about differences from the most up-to-date ABI, which is also used by default
+cc1plus: note: use e.g. ‘-Wabi=11’ to warn about changes from GCC 7
+cc1plus: warning: ‘-Wabi’ won’t warn about anything [-Wabi]
+cc1plus: note: ‘-Wabi’ warns about differences from the most up-to-date ABI, which is also used by default
+cc1plus: note: use e.g. ‘-Wabi=11’ to warn about changes from GCC 7
+[ 37%] Linking CXX executable ../bin/pcl_gp3_surface
+[ 37%] Linking CXX executable ../bin/pcl_marching_cubes_reconstruction
+/usr/bin/ld: ../lib/libpcl_kdtree.so.1.8.1: undefined reference to LZ4_resetStreamHC'
+/usr/bin/ld: ../lib/libpcl_kdtree.so.1.8.1: undefined reference to LZ4_setStreamDecode'
+/usr/bin/ld: ../lib/libpcl_kdtree.so.1.8.1: undefined reference to LZ4_decompress_safe'
+/usr/bin/ld: ../lib/libpcl_kdtree.so.1.8.1: undefined reference to LZ4_decompress_safe_continue'
+/usr/bin/ld: ../lib/libpcl_kdtree.so.1.8.1: undefined reference to LZ4_compress_HC_continue'
+collect2: error: ld returned 1 exit status
+/usr/bin/ld: ../lib/libpcl_kdtree.so.1.8.1: undefined reference to LZ4_resetStreamHC'
+/usr/bin/ld: ../lib/libpcl_kdtree.so.1.8.1: undefined reference to LZ4_setStreamDecode'
+/usr/bin/ld: ../lib/libpcl_kdtree.so.1.8.1: undefined reference tomake[2]: *** [tools/CMakeFiles/pcl_marching_cubes_reconstruction.dir/build.make:282: bin/pcl_marching_cubes_reconstruction] Error 1
+ LZ4_decompress_safe'
+/usr/bin/ld: ../lib/libpcl_kdtree.so.1.8.1: undefined reference to LZ4_decompress_safe_continue'
+/usr/bin/ld: ../lib/libpcl_kdtree.so.1.8.1: undefined reference to LZ4_compress_HC_continue'
+collect2: error: ld returned 1 exit status
+make[1]: *** [CMakeFiles/Makefile2:3148: tools/CMakeFiles/pcl_marching_cubes_reconstruction.dir/all] Error 2
+make[1]: *** Waiting for unfinished jobs....
+make[2]: *** [tools/CMakeFiles/pcl_gp3_surface.dir/build.make:282: bin/pcl_gp3_surface] Error 1
+make[1]: *** [CMakeFiles/Makefile2:3078: tools/CMakeFiles/pcl_gp3_surface.dir/all] Error 2
+[ 37%] Building CXX object visualization/CMakeFiles/pcl_visualization.dir/src/window.cpp.o
+[ 38%] Building CXX object visualization/CMakeFiles/pcl_visualization.dir/src/range_image_visualizer.cpp.o
+cc1plus: warning: ‘-Wabi’ won’t warn about anything [-Wabi]
+cc1plus: note: ‘-Wabi’ warns about differences from the most up-to-date ABI, which is also used by default
+cc1plus: note: use e.g. ‘-Wabi=11’ to warn about changes from GCC 7
+cc1plus: warning: ‘-Wabi’ won’t warn about anything [-Wabi]
+cc1plus: note: ‘-Wabi’ warns about differences from the most up-to-date ABI, which is also used by default
+cc1plus: note: use e.g. ‘-Wabi=11’ to warn about changes from GCC 7
+/home/chang/Downloads/pcl-trunk/visualization/src/pcl_visualizer.cpp:103:10: fatal error: boost/uuid/sha1.hpp: No such file or directory
+  103 | #include <boost/uuid/sha1.hpp>
+      |          ^~~~~~~~~~~~~~~~~~~~~
+compilation terminated.
+make[2]: *** [visualization/CMakeFiles/pcl_visualization.dir/build.make:102: visualization/CMakeFiles/pcl_visualization.dir/src/pcl_visualizer.cpp.o] Error 1
+make[2]: *** Waiting for unfinished jobs....
+In file included from /usr/include/boost/detail/endian.hpp:9,
+                 from /home/chang/Downloads/pcl-trunk/common/include/pcl/PCLPointCloud2.h:11,
+                 from /home/chang/Downloads/pcl-trunk/common/include/pcl/pcl_base.h:55,
+                 from /home/chang/Downloads/pcl-trunk/common/include/pcl/common/io.h:45,
+                 from /home/chang/Downloads/pcl-trunk/visualization/include/pcl/visualization/point_cloud_geometry_handlers.h:46,
+                 from /home/chang/Downloads/pcl-trunk/visualization/include/pcl/visualization/point_cloud_handlers.h:41,
+                 from /home/chang/Downloads/pcl-trunk/visualization/include/pcl/visualization/common/actor_map.h:40,
+                 from /home/chang/Downloads/pcl-trunk/visualization/include/pcl/visualization/interactor_style.h:44,
+                 from /home/chang/Downloads/pcl-trunk/visualization/include/pcl/visualization/image_viewer.h:46,
+                 from /home/chang/Downloads/pcl-trunk/visualization/src/image_viewer.cpp:50:
+/usr/include/boost/predef/detail/endian_compat.h:11:161: note: #pragma message: The use of BOOST_*_ENDIAN and BOOST_BYTE_ORDER is deprecated. Please include <boost/predef/other/endian.h> and use BOOST_ENDIAN_*_BYTE instead
+   11 | #pragma message("The use of BOOST_*_ENDIAN and BOOST_BYTE_ORDER is deprecated. Please include <boost/predef/other/endian.h> and use BOOST_ENDIAN_*_BYTE instead")
+      |                                                                                                                                                                 ^
+In file included from /usr/include/boost/detail/endian.hpp:9,
+                 from /home/chang/Downloads/pcl-trunk/common/include/pcl/PCLPointCloud2.h:11,
+                 from /home/chang/Downloads/pcl-trunk/common/include/pcl/pcl_base.h:55,
+                 from /home/chang/Downloads/pcl-trunk/common/include/pcl/common/io.h:45,
+                 from /home/chang/Downloads/pcl-trunk/visualization/include/pcl/visualization/point_cloud_geometry_handlers.h:46,
+                 from /home/chang/Downloads/pcl-trunk/visualization/include/pcl/visualization/point_cloud_handlers.h:41,
+                 from /home/chang/Downloads/pcl-trunk/visualization/include/pcl/visualization/common/actor_map.h:40,
+                 from /home/chang/Downloads/pcl-trunk/visualization/include/pcl/visualization/interactor_style.h:44,
+                 from /home/chang/Downloads/pcl-trunk/visualization/src/window.cpp:44:
+/usr/include/boost/predef/detail/endian_compat.h:11:161: note: #pragma message: The use of BOOST_*_ENDIAN and BOOST_BYTE_ORDER is deprecated. Please include <boost/predef/other/endian.h> and use BOOST_ENDIAN_*_BYTE instead
+   11 | #pragma message("The use of BOOST_*_ENDIAN and BOOST_BYTE_ORDER is deprecated. Please include <boost/predef/other/endian.h> and use BOOST_ENDIAN_*_BYTE instead")
+      |                                                                                                                                                                 ^
+In file included from /usr/include/boost/detail/endian.hpp:9,
+                 from /home/chang/Downloads/pcl-trunk/common/include/pcl/PCLPointCloud2.h:11,
+                 from /home/chang/Downloads/pcl-trunk/common/include/pcl/pcl_base.h:55,
+                 from /home/chang/Downloads/pcl-trunk/common/include/pcl/common/common.h:41,
+                 from /home/chang/Downloads/pcl-trunk/common/include/pcl/common/common_headers.h:39,
+                 from /home/chang/Downloads/pcl-trunk/common/include/pcl/range_image/range_image.h:44,
+                 from /home/chang/Downloads/pcl-trunk/visualization/include/pcl/visualization/range_image_visualizer.h:43,
+                 from /home/chang/Downloads/pcl-trunk/visualization/src/range_image_visualizer.cpp:37:
+/usr/include/boost/predef/detail/endian_compat.h:11:161: note: #pragma message: The use of BOOST_*_ENDIAN and BOOST_BYTE_ORDER is deprecated. Please include <boost/predef/other/endian.h> and use BOOST_ENDIAN_*_BYTE instead
+   11 | #pragma message("The use of BOOST_*_ENDIAN and BOOST_BYTE_ORDER is deprecated. Please include <boost/predef/other/endian.h> and use BOOST_ENDIAN_*_BYTE instead")
+      |                                                                                                                                                                 ^
+make[1]: *** [CMakeFiles/Makefile2:1709: visualization/CMakeFiles/pcl_visualization.dir/all] Error 2
+make: *** [Makefile:163: all] Error 2
+"""

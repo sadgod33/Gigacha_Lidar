@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.0.2)
 project(pcl_cpp_tutorial)
-set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD 17)
 
 # 디버깅용 코드
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g")
@@ -21,15 +21,17 @@ find_package(catkin REQUIRED COMPONENTS
   geometry_msgs
   message_filters
   visualization_msgs
+  vision_msgs
+  cv_bridge
 )
 
-find_package(OpenCV REQUIRED)
-find_package(PCL 1.8 REQUIRED)  # PCL 추가
+find_package(OpenCV 3 REQUIRED)
+find_package(PCL REQUIRED)  # PCL 추가
 
 catkin_package(
 #  INCLUDE_DIRS include
 #  LIBRARIES pcl_cpp_tutorial
-  CATKIN_DEPENDS pcl_conversions pcl_ros roscpp sensor_msgs std_msgs message_filters geometry_msgs visualization_msgs
+  CATKIN_DEPENDS pcl_conversions pcl_ros roscpp sensor_msgs std_msgs message_filters geometry_msgs visualization_msgs vision_msgs cv_bridge 
 #  DEPENDS system_lib
 )
 
@@ -41,12 +43,12 @@ catkin_package(
 ## Your package locations should be listed before other locations
 include_directories(
     ${catkin_INCLUDE_DIRS}
-    ${OpenCV_INCLUDE_DIRS}  # OpenCV 인클루드 디렉토리 추가
-    ${PCL_INCLUDE_DIRS}  # PCL 인클루드 디렉토리 추가
-    ${PROJECT_SOURCE_DIR}/include  # 헤더 파일 위치를 적절히 변경해주세요.
+    ${OpenCV_INCLUDE_DIRS}  
+    ${PCL_INCLUDE_DIRS} 
+    ${PROJECT_SOURCE_DIR}/include 
 )
 
-link_directories(${PCL_LIBRARY_DIRS})  # PCL 라이브러리 디렉토리 추가
+link_directories(${PCL_LIBRARY_DIRS})
 add_definitions(${PCL_DEFINITIONS})
 
 # ---------- LINKING ------------
@@ -94,6 +96,46 @@ add_executable(practics_dynamic_cone
   src/Hungarian.cpp
 )
 target_link_libraries(practics_dynamic_cone ${catkin_LIBRARIES} ${PCL_LIBRARIES} ${OpenCV_LIBS})  # OpenCV 라이브러리 추가
+
+
+# 센서퓨전 + 오브젝트 인식 링킹
+set(FUSION_OBJECT_SOURCES
+    ${PROJECT_SOURCE_DIR}/src/main/fusion_object.cpp
+    ${PROJECT_SOURCE_DIR}/src/preprocessor.cpp
+    ${PROJECT_SOURCE_DIR}/src/pointcloud_generator.cpp
+    ${PROJECT_SOURCE_DIR}/src/utility.cpp
+    ${PROJECT_SOURCE_DIR}/src/clustering.cpp
+    ${PROJECT_SOURCE_DIR}/src/Hungarian.cpp
+)
+add_executable(fusion_object ${FUSION_OBJECT_SOURCES})
+target_link_libraries(fusion_object ${catkin_LIBRARIES} ${PCL_LIBRARIES} ${OpenCV_LIBS})
+
+
+# 센서퓨전 + 차선 인식 링킹
+set(FUSION_LINE_SOURCES
+    ${PROJECT_SOURCE_DIR}/src/main/fusion_line.cpp
+    ${PROJECT_SOURCE_DIR}/src/preprocessor.cpp
+    ${PROJECT_SOURCE_DIR}/src/pointcloud_generator.cpp
+    ${PROJECT_SOURCE_DIR}/src/utility.cpp
+    ${PROJECT_SOURCE_DIR}/src/clustering.cpp
+    ${PROJECT_SOURCE_DIR}/src/Hungarian.cpp
+)
+add_executable(fusion_line ${FUSION_LINE_SOURCES})
+target_link_libraries(fusion_line ${catkin_LIBRARIES} ${PCL_LIBRARIES} ${OpenCV_LIBS})
+
+
+# 센서퓨전 + 차선 인식 링킹
+set(FUSION_LINE_2D_SOURCES
+    ${PROJECT_SOURCE_DIR}/src/main/fusion_line_2D.cpp
+    ${PROJECT_SOURCE_DIR}/src/preprocessor.cpp
+    ${PROJECT_SOURCE_DIR}/src/pointcloud_generator.cpp
+    ${PROJECT_SOURCE_DIR}/src/utility.cpp
+    ${PROJECT_SOURCE_DIR}/src/clustering.cpp
+    ${PROJECT_SOURCE_DIR}/src/Hungarian.cpp
+)
+add_executable(fusion_line_2D ${FUSION_LINE_2D_SOURCES})
+target_link_libraries(fusion_line_2D ${catkin_LIBRARIES} ${PCL_LIBRARIES} ${OpenCV_LIBS})
+
 
 # 임의의 GPS 생성
 include_directories(include ${catkin_INCLUDE_DIRS})

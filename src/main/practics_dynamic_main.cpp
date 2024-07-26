@@ -1,12 +1,9 @@
 #include "pointcloud_generator.h"
 #include "utility.h"
 
-
 using namespace std;
 
-
 /**
- *! 현재는 콘bag 파일을 기준으로 작성되어 있으며, 실제 적용시 다를 수 있습니다.
  ** 좌표
         * x: 차량의 정면
         * y: 차량의 좌측
@@ -16,6 +13,7 @@ using namespace std;
         * 라이다의 row: 아래서부터 위로 숫자가 증가
         * 라이다의 column: 라이다 후면부터 반시계 방향으로 증가
  */
+//
 
 
 class ImageProjection{
@@ -29,10 +27,19 @@ private:
 // ros::subscriber & sync
 	message_filters::Subscriber<sensor_msgs::PointCloud2> subLidar;
 	message_filters::Subscriber<geometry_msgs::PoseStamped> subLocalMsgs;
-	typedef message_filters::sync_policies::ApproximateTime<sensor_msgs::PointCloud2, geometry_msgs::PoseStamped> MySyncPolicy;
-    typedef message_filters::Synchronizer<MySyncPolicy> Sync;
+	std::vector<message_filters::Subscriber<sensor_msgs::Image>*> subImages;
+    std::vector<message_filters::Subscriber<vision_msgs::Detection2DArray>*> subBoxes;
+
+    typedef message_filters::sync_policies::ApproximateTime<sensor_msgs::PointCloud2, geometry_msgs::PoseStamped> SyncPolicy;
+    typedef message_filters::Synchronizer<SyncPolicy> Sync;
     boost::shared_ptr<Sync> sync;
 
+    std::vector<std::vector<string>>  camera_box_pairs;
+	std::vector<std::vector<string>>  camera_line_pairs;
+	std::vector<G_CMD> g_cmd_obj_list;
+	std::vector<G_CMD> g_cmd_line_list;
+	std::vector<pid_t> pids;
+	
 // ros::publisher
 	ros::Publisher pubOdometry;
 
@@ -84,7 +91,7 @@ private:
 	Preprocessor preprocessor;
 	PointCloudGenerator pointCloudGenerator;
 
-
+	
 public:
 	// 전처리 클래스 선언
 	ImageProjection(): nh("~"){
@@ -114,14 +121,55 @@ public:
 		subLidar.subscribe(nh, "/os_cloud_node/points", 10);
 		subLocalMsgs.subscribe(nh, "/local_msgs_to_vision", 1000);
 
-		// callback
-		sync.reset(new Sync(MySyncPolicy(50), subLidar, subLocalMsgs));
-        sync->registerCallback(boost::bind(&ImageProjection::cloudHandler, this, _1, _2));
+	// ------------------------------ 카메라 센서퓨전 서브프로세스 -------------------------------
+        // 카메라별 토픽 및 파라미터 설정
+		camera_box_pairs = { {"/usb_cam/static", "/static_bbox", "/vision_marker"}, {"/usb_cam/static", "/static_bbox", "/vision_test"}};
+
+		// 차선 인식 토픽 및 파라미터 설정
+		camera_line_pairs = {{"/output_img", "/seg_img", "/line_marker", "/follow_marker"}};
+
+		G_CMD g_cmd0;
+		g_cmd0.rvec = {0, 0, 0}; g_cmd0.t_mat = {0, 0, 0}; g_cmd0.focal_length = {636.4573730956954, 667.7077677609984}; g_cmd0.cam = {640, 480};
+		g_cmd_obj_list.push_back(g_cmd0);
+		G_CMD g_cmd1;
+		g_cmd1.rvec = {0, 0, 0}; g_cmd1.t_mat = {0, 0, 0}; g_cmd1.focal_length = {636.4573730956954, 667.7077677609984}; g_cmd1.cam = {640, 480};
+		g_cmd_obj_list.push_back(g_cmd1);
+
+		G_CMD g_cmd2;
+		g_cmd2.rvec = {0, 0, 0}; g_cmd2.t_mat = {0, 0.05, -0.05}; g_cmd2.focal_length = {820, 820}; g_cmd2.cam = {1280, 720};
+		g_cmd_line_list.push_back(g_cmd2);
+
+        for (int camera_idx = 0; camera_idx < camera_box_pairs.size(); ++camera_idx) {
+            pid_t pid = subProcess_obj(camera_idx, g_cmd_obj_list[camera_idx], camera_box_pairs[camera_idx]);
+            if (pid > 0) {
+                pids.push_back(pid);
+            }
+        }
+
+		for (int camera_idx = 0; camera_idx < camera_line_pairs.size(); ++camera_idx) {
+            pid_t pid = subProcess_line(camera_idx, g_cmd_line_list[camera_idx], camera_line_pairs[camera_idx]);
+            if (pid > 0) {
+                pids.push_back(pid);
+            }
+        }
+	// ------------------------------ 카메라 센서퓨전 서브프로세스 -------------------------------
+
+		
+		sync.reset(new Sync(SyncPolicy(50), subLidar, subLocalMsgs));
+		sync->registerCallback(boost::bind(&ImageProjection::cloudHandler, this, _1, _2));
 
 		// 													mapReader("json 파일");
 		allocateMemory();
 		clearMemory();
-}
+	}
+
+	~ImageProjection() {
+        // 자식 프로세스 종료 대기
+        for (pid_t pid : pids) {
+            int status;
+            waitpid(pid, &status, 0);
+        }
+    }
 
 
     void allocateMemory(){
@@ -166,12 +214,15 @@ public:
 		// vector 초기화
 		smallObject_Cloud_vector->clear();
         bigObject_Cloud_vector->clear();
+
 	}
 
 
+// 라이다와 GPS만 작동시 진행
 	void cloudHandler(const sensor_msgs::PointCloud2::ConstPtr& rosCloud, 
 					  const geometry_msgs::PoseStampedConstPtr& local_msg)
 	{
+		cout << "LiDAR is Working" << endl;
 		pcl::fromROSMsg(*rosCloud, *laserCloudIn);
 		saveCurrentTime(rosCloud);
 	// 라이다-GPS 거리 및 라이다 Y축 회전값 보정
@@ -195,11 +246,11 @@ public:
 	// 관심 영역 설정
 		pointCloudGenerator.getInterestCloud(fullCloud, interestCloud, {-2, 15}, {-6, 6}, {-0.7, 1.5});
 	// 전방 영역 설정
-		pointCloudGenerator.getFovCloud(fullCloud, fovCloud, {-999, 10}, {-999, 999}, {-999, 999}, {-45, 45});
+		//pointCloudGenerator.getFovCloud(fullCloud, fovCloud, {-999, 10}, {-999, 999}, {-999, 999}, {-45, 45});
 		
 	// 지면제거 영역 분할
 		pointCloudGenerator.getGrdRemovalClouds(fullCloud, groundCloud, nongroundCloud, {15.0, -0.85});
-		
+
 	// 절대좌표로 전환
 		pointCloudGenerator.getTransformedClouds(fullCloud, transformedCloud);
 

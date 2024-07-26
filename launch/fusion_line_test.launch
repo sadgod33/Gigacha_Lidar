@@ -1,0 +1,5 @@
+<launch>
+    <!--- LeGO-LOAM -->    
+    <node pkg="pcl_cpp_tutorial" type="fusion_line" name="fusion_line"  output="screen"/>
+        <param name="frame_id" value="os_sensor"/>
+</launch>

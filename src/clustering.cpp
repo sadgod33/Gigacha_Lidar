@@ -91,14 +91,14 @@ void Clustering::clusterObject(const pcl::PointCloud<PointType>::Ptr& input_poin
         for(pcl::PointIndices& clusterIdx : clusterIndices)
         {
             // x, y의 최대값 최소값 저장 포인트
-            PointType minXPoint, maxXPoint, minYPoint, maxYPoint, maxZPoint;
+            PointType minXPoint, maxXPoint, minYPoint, maxYPoint, minZPoint, maxZPoint;
             minXPoint.x = minXPoint.y = minXPoint.z = std::numeric_limits<float>::max();
             maxXPoint.x = maxXPoint.y = maxXPoint.z = std::numeric_limits<float>::lowest();
             minYPoint.x = minYPoint.y = minYPoint.z = std::numeric_limits<float>::max();
             maxYPoint.x = maxYPoint.y = maxYPoint.z = std::numeric_limits<float>::lowest();
+            minZPoint.x = minZPoint.y = minZPoint.z = std::numeric_limits<float>::max();
             maxZPoint.x = maxZPoint.y = maxZPoint.z = std::numeric_limits<float>::lowest();
 
-            // 받은 인덱스의 포인트의 평균
             clusterPoint.x = 0.0; clusterPoint.y = 0.0; clusterPoint.z = 0.0;
             for(int& index : clusterIdx.indices)
             { 
@@ -109,12 +109,11 @@ void Clustering::clusterObject(const pcl::PointCloud<PointType>::Ptr& input_poin
                 if (point.y > maxYPoint.y) maxYPoint = point;
                 if (point.y < minYPoint.y) minYPoint = point;
                 if (point.z > maxZPoint.z) maxZPoint = point;
+                if (point.z < minZPoint.z) minZPoint = point;
 
                 clusterPoint.x += point.x;
                 clusterPoint.y += point.y;
             }
-            std::cout << "maxX: " << maxXPoint.x << " minX: " << minXPoint.x << std::endl;
-            std::cout << "maxY: " << maxYPoint.y << " minY: " << minYPoint.y << std::endl;
 
             clusterPoint.x /= clusterIdx.indices.size();
             clusterPoint.y /= clusterIdx.indices.size();
@@ -122,14 +121,16 @@ void Clustering::clusterObject(const pcl::PointCloud<PointType>::Ptr& input_poin
             float scaleX = maxXPoint.x - minXPoint.x;
             float scaleY = maxYPoint.y - minYPoint.y;
 
+            // 벽면 및 바닥일 경우 클러스터링 대상 제외
+            if (((maxZPoint.z + LI_TO_GND_Z) > 2.3) || ((maxZPoint.z - minZPoint.z) < 0.3))
+            {
+                continue;
+            }
+
             // 큰 장애물
             if (((1.5 < scaleX && scaleX < 4.5) && (0.5 < scaleY && scaleY < 4.5)) || 
                 ((1.5 < scaleY && scaleY < 4.5) && (0.5 < scaleX && scaleX < 4.5)))
             {
-                if (maxZPoint.z + LI_TO_GND_Z > 2.3) 
-                {
-                    continue;
-                }
                 pcl::PointCloud<PointType>::Ptr ClusterCloud (new pcl::PointCloud<PointType>);
 
                 for(int& index : clusterIdx.indices)
@@ -162,7 +163,9 @@ void Clustering::processObject(const std::shared_ptr<std::vector<pcl::PointCloud
         ++Id;
         double ori_x, ori_y, ori_z, ori_w,r, theta_avg, mean_y, mean_x,mid_x, mid_y, thetas, theta, pos_x, pos_y, Lshape_fitting_cost;
         std::tie(theta, mean_x, mean_y, Lshape_fitting_cost) = get_best_theta(*cluster);
-        cout << "This Object's cost is " << Lshape_fitting_cost << endl; 
+        cout << "ID - " << Id << std::endl;
+        cout << "    L-shaep-fitting cost: " << Lshape_fitting_cost << endl; 
+        cout << "    Heading: " << theta << endl; 
 
         visualization_msgs::Marker bbox;
         bbox = bbox_3d(*cluster, ego_heading_deg, ego_x, ego_y, Id);

@@ -54,6 +54,139 @@
     // 콘 주행 상수
     const double CONE_BETWEEN = 2;                        // 차량과 양측에 위치한 콘 사이 y방향 거리
 
+// 서브 프로세스
+    pid_t subProcess_obj(int camera_idx, G_CMD g_cmd , std::vector<string> camera_pair)
+    {
+		int pipefd[2];
+		if (pipe(pipefd) == -1) {
+			perror("pipe");
+			exit(EXIT_FAILURE);
+		}
+
+		pid_t pid = fork();
+		if (pid == -1) {
+			perror("fork");
+			exit(EXIT_FAILURE);
+		}
+
+		if (pid == 0) {
+			// 자식 프로세스
+			close(pipefd[1]);
+			dup2(pipefd[0], STDIN_FILENO);
+
+			// 실행 파일 존재 확인
+            if (access("/home/sadgod33/catkin_ws/devel/lib/pcl_cpp_tutorial/fusion_object", X_OK) == -1) {
+                perror("access");
+                exit(EXIT_FAILURE);
+            }
+
+            // 실행 파일 실행
+            execl("/home/sadgod33/catkin_ws/devel/lib/pcl_cpp_tutorial/fusion_object", "fusion_object", (char *)NULL);
+			
+			// execl 실행 실패 시
+			perror("execl");
+			exit(EXIT_FAILURE);
+		} else {
+			// 부모 프로세스
+			close(pipefd[0]);
+
+			// 인덱스 송신
+			write(pipefd[1], &camera_idx, sizeof(camera_idx));
+
+			// rvec
+			write(pipefd[1], g_cmd.rvec.data(), 3 * sizeof(double));
+			// t_mat
+			write(pipefd[1], g_cmd.t_mat.data(), 3 * sizeof(double));
+			// focal_length
+			write(pipefd[1], g_cmd.focal_length.data(), 2 * sizeof(double));
+			// cam
+			write(pipefd[1], g_cmd.cam.data(), 2 * sizeof(int));
+
+            // string 송신
+            uint32_t image_topic_size = camera_pair[0].size();
+            uint32_t box_topic_size = camera_pair[1].size();
+            uint32_t marker_topic_size = camera_pair[2].size();
+            write(pipefd[1], &image_topic_size, sizeof(uint32_t));
+            write(pipefd[1], camera_pair[0].c_str(), image_topic_size);
+            write(pipefd[1], &box_topic_size, sizeof(uint32_t));
+            write(pipefd[1], camera_pair[1].c_str(), box_topic_size);
+            write(pipefd[1], &marker_topic_size, sizeof(uint32_t));
+            write(pipefd[1], camera_pair[2].c_str(), marker_topic_size);
+
+			
+			close(pipefd[1]);
+			return pid;
+		}
+		return -1;
+    }
+
+    pid_t subProcess_line(int camera_idx, G_CMD g_cmd , std::vector<string> camera_pair)
+    {
+		int pipefd[2];
+		if (pipe(pipefd) == -1) {
+			perror("pipe");
+			exit(EXIT_FAILURE);
+		}
+
+		pid_t pid = fork();
+		if (pid == -1) {
+			perror("fork");
+			exit(EXIT_FAILURE);
+		}
+
+		if (pid == 0) {
+			// 자식 프로세스
+			close(pipefd[1]);
+			dup2(pipefd[0], STDIN_FILENO);
+
+			// 실행 파일 존재 확인
+            if (access("/home/sadgod33/catkin_ws/devel/lib/pcl_cpp_tutorial/fusion_line", X_OK) == -1) {
+                perror("access");
+                exit(EXIT_FAILURE);
+            }
+
+            // 실행 파일 실행
+            execl("/home/sadgod33/catkin_ws/devel/lib/pcl_cpp_tutorial/fusion_line", "fusion_line", (char *)NULL);
+        
+			// execl 실행 실패 시
+			perror("execl");
+			exit(EXIT_FAILURE);
+		} else {
+			// 부모 프로세스
+			close(pipefd[0]);
+
+			// 인덱스 송신
+			write(pipefd[1], &camera_idx, sizeof(camera_idx));
+
+			// rvec
+			write(pipefd[1], g_cmd.rvec.data(), 3 * sizeof(double));
+			// t_mat
+			write(pipefd[1], g_cmd.t_mat.data(), 3 * sizeof(double));
+			// focal_length
+			write(pipefd[1], g_cmd.focal_length.data(), 2 * sizeof(double));
+			// cam
+			write(pipefd[1], g_cmd.cam.data(), 2 * sizeof(int));
+
+            // string 송신
+            uint32_t image_topic_size = camera_pair[0].size();
+            uint32_t seg_image_topic_size = camera_pair[1].size();
+            uint32_t line_topic_size = camera_pair[2].size();
+            uint32_t follow_topic_size = camera_pair[3].size();
+
+            write(pipefd[1], &image_topic_size, sizeof(uint32_t));
+            write(pipefd[1], camera_pair[0].c_str(), image_topic_size);
+            write(pipefd[1], &seg_image_topic_size, sizeof(uint32_t));
+            write(pipefd[1], camera_pair[1].c_str(), seg_image_topic_size);
+            write(pipefd[1], &line_topic_size, sizeof(uint32_t));
+            write(pipefd[1], camera_pair[2].c_str(), line_topic_size);
+            write(pipefd[1], &follow_topic_size, sizeof(uint32_t));
+            write(pipefd[1], camera_pair[3].c_str(), follow_topic_size);
+
+			close(pipefd[1]);
+			return pid;
+		}
+		return -1;
+    }
 
 // 객체 저장 포인터 클라우드 선언
     pcl::PointCloud<PointType>::Ptr clusterStopOver(new pcl::PointCloud<PointType>());

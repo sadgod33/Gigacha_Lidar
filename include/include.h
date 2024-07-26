@@ -1,17 +1,24 @@
 #ifndef INCLUDE_H
 #define INCLUDE_H
 
-
+#include <unistd.h>
+#include <sys/wait.h>
+#include <cv_bridge/cv_bridge.h>
 #include <std_msgs/Bool.h>
-#include <geometry_msgs/PoseStamped.h>
-#include <visualization_msgs/MarkerArray.h>
-#include <visualization_msgs/Marker.h>
-#include <geometry_msgs/PoseArray.h>
-#include <geometry_msgs/Pose.h>
 #include <std_msgs/Header.h>
 #include <std_msgs/Float32MultiArray.h>
+#include <visualization_msgs/MarkerArray.h>
+#include <visualization_msgs/Marker.h>
+#include <geometry_msgs/PoseStamped.h>
+#include <geometry_msgs/PoseArray.h>
+#include <geometry_msgs/Pose.h>
 #include <vector>
 #include <sensor_msgs/PointCloud2.h>
+#include <sensor_msgs/Image.h>
+#include <sensor_msgs/Imu.h>
+#include <sensor_msgs/image_encodings.h>
+#include <sensor_msgs/point_cloud2_iterator.h>
+#include <vision_msgs/Detection2DArray.h>
 
 #include <message_filters/subscriber.h>
 #include <message_filters/time_synchronizer.h>
@@ -58,7 +65,6 @@
 #include <json/json.h>
 #include <unordered_set>
 #include <ros/ros.h>
-#include <sensor_msgs/Imu.h>
 #include <nav_msgs/Odometry.h>
 #include <opencv/cv.h>
 

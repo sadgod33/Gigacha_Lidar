@@ -76,6 +76,40 @@ using namespace std;
     )
     using PointXYZIRT = OusterPointXYZIRT;
 
+    // 카메라 파라미터 구조체
+    struct ParamsLidar {
+        double X = 0.0;
+        double Y = 0.0;
+        double Z = 0.0;
+        double YAW = 0.0;
+        double PITCH = 0.0;
+        double ROLL = 0.0;
+    };
+
+    struct CameraParams {
+        int WIDTH = 640;
+        int HEIGHT = 480;
+        double FOV = 78;
+        double X = 0.0;
+        double Y = 0.0;
+        double Z = 0.0;
+        double YAW = 0.0;
+        double PITCH = 0.0;
+        double ROLL = 0.0;
+    };
+
+
+    struct G_CMD {
+        std::vector<double> rvec = {0.0 * DEG_TO_RAD, 0 * DEG_TO_RAD, 0 * DEG_TO_RAD};
+        std::vector<double> t_mat = {0, 0, 0};
+        std::vector<double> focal_length = {636.4573730956954, 667.7077677609984};
+        std::vector<int> cam = {640, 480};
+    };
+
+// 서브 프로세스
+    pid_t subProcess_obj(int camera_idx, G_CMD g_cmd , std::vector<string> camera_pair);
+    pid_t subProcess_line(int camera_idx, G_CMD g_cmd , std::vector<string> camera_pair);
+
 // 객체 저장 포인터 클라우드 선언
     extern pcl::PointCloud<PointType>::Ptr clusterStopOver;
 
