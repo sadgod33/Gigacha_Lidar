@@ -237,6 +237,7 @@
                 min_idx = i;
             }
         }
+        cout << "min_dis: " << min_dis << endl;
         curr_index = min_idx;
     }
 

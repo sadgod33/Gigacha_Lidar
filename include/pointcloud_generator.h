@@ -37,6 +37,9 @@ public:
     */
     void getInterestCloud(const pcl::PointCloud<PointType>::Ptr& input_pointCloud, const pcl::PointCloud<PointType>::Ptr& output_pointCloud, const std::pair<double, double> x_threshold, const std::pair<double, double> y_threshold, const std::pair<double, double> z_threshold);
  
+
+    void getAngleCloud(const pcl::PointCloud<PointType>::Ptr& input_pointCloud,const pcl::PointCloud<PointType>::Ptr& output_pointCloud,const std::pair<double, double>       x_threshold, const std::pair<double, double> y_threshold, const std::pair<double, double> z_threshold,const std::pair<float, float> xy_angle_threshold);
+
     /**
      * @brief InterestCloud를 생성한다.
      * @param 과정: (범위 지정)

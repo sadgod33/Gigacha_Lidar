@@ -34,6 +34,8 @@ int main(int argc, char** argv)
 
     // Subscriber 설정
     ros::Subscriber pointcloud_sub = nh.subscribe("/os_cloud_node/points", 10, pointCloudCallback);
+    ros::Subscriber pointcloud_sub_ = nh.subscribe("/scan_2D", 10, pointCloudCallback);
+
 
     // ROS 루프 시작
     ros::spin();

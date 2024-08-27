@@ -74,6 +74,28 @@ add_executable(practics_dynamic_main
 )
 target_link_libraries(practics_dynamic_main ${catkin_LIBRARIES} ${PCL_LIBRARIES} ${OpenCV_LIBS})  # OpenCV 라이브러리 추가
 
+# 만도 대회용 링킹
+set(MANDO_SOURCES
+    ${PROJECT_SOURCE_DIR}/src/main/practics_dynamic_mando.cpp
+    ${PROJECT_SOURCE_DIR}/src/preprocessor.cpp
+    ${PROJECT_SOURCE_DIR}/src/pointcloud_generator.cpp
+    ${PROJECT_SOURCE_DIR}/src/utility.cpp
+    ${PROJECT_SOURCE_DIR}/src/clustering.cpp
+    ${PROJECT_SOURCE_DIR}/src/Hungarian.cpp
+)
+add_executable(${PROJECT_NAME}_mando ${MANDO_SOURCES})
+target_link_libraries(${PROJECT_NAME}_mando ${catkin_LIBRARIES} ${PCL_LIBRARIES} ${OpenCV_LIBS})  # OpenCV 라이브러리 추가
+
+add_executable(practics_dynamic_mando
+  src/main/practics_dynamic_mando.cpp 
+  src/preprocessor.cpp 
+  src/pointcloud_generator.cpp
+  src/utility.cpp
+  src/clustering.cpp
+  src/Hungarian.cpp
+)
+target_link_libraries(practics_dynamic_mando ${catkin_LIBRARIES} ${PCL_LIBRARIES} ${OpenCV_LIBS})  # OpenCV 라이브러리 추가
+
 
 # 콘주행 링킹
 set(CONE_SOURCES
@@ -100,7 +122,7 @@ target_link_libraries(practics_dynamic_cone ${catkin_LIBRARIES} ${PCL_LIBRARIES}
 
 # 센서퓨전 + 오브젝트 인식 링킹
 set(FUSION_OBJECT_SOURCES
-    ${PROJECT_SOURCE_DIR}/src/main/fusion_object.cpp
+    ${PROJECT_SOURCE_DIR}/src/fusion/fusion_object.cpp
     ${PROJECT_SOURCE_DIR}/src/preprocessor.cpp
     ${PROJECT_SOURCE_DIR}/src/pointcloud_generator.cpp
     ${PROJECT_SOURCE_DIR}/src/utility.cpp
@@ -113,7 +135,7 @@ target_link_libraries(fusion_object ${catkin_LIBRARIES} ${PCL_LIBRARIES} ${OpenC
 
 # 센서퓨전 + 차선 인식 링킹
 set(FUSION_LINE_SOURCES
-    ${PROJECT_SOURCE_DIR}/src/main/fusion_line.cpp
+    ${PROJECT_SOURCE_DIR}/src/fusion/fusion_line.cpp
     ${PROJECT_SOURCE_DIR}/src/preprocessor.cpp
     ${PROJECT_SOURCE_DIR}/src/pointcloud_generator.cpp
     ${PROJECT_SOURCE_DIR}/src/utility.cpp
@@ -126,7 +148,7 @@ target_link_libraries(fusion_line ${catkin_LIBRARIES} ${PCL_LIBRARIES} ${OpenCV_
 
 # 센서퓨전 + 차선 인식 링킹
 set(FUSION_LINE_2D_SOURCES
-    ${PROJECT_SOURCE_DIR}/src/main/fusion_line_2D.cpp
+    ${PROJECT_SOURCE_DIR}/src/fusion/fusion_line_2D.cpp
     ${PROJECT_SOURCE_DIR}/src/preprocessor.cpp
     ${PROJECT_SOURCE_DIR}/src/pointcloud_generator.cpp
     ${PROJECT_SOURCE_DIR}/src/utility.cpp
@@ -135,6 +157,8 @@ set(FUSION_LINE_2D_SOURCES
 )
 add_executable(fusion_line_2D ${FUSION_LINE_2D_SOURCES})
 target_link_libraries(fusion_line_2D ${catkin_LIBRARIES} ${PCL_LIBRARIES} ${OpenCV_LIBS})
+
+
 
 
 # 임의의 GPS 생성

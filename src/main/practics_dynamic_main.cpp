@@ -13,8 +13,6 @@ using namespace std;
         * 라이다의 row: 아래서부터 위로 숫자가 증가
         * 라이다의 column: 라이다 후면부터 반시계 방향으로 증가
  */
-//
-
 
 class ImageProjection{
 private:
@@ -54,6 +52,7 @@ private:
 
 	ros::Publisher pubTransformedCloud;
 	ros::Publisher pubTransformedRoiCloud;
+	ros::Publisher pubAngleCloud;
 
 	ros::Publisher pubDebugCloud;
 	ros::Publisher pubCarMarkerArray;	// 큐브
@@ -77,6 +76,7 @@ private:
 	pcl::PointCloud<PointType>::Ptr transformedCloud;
 	pcl::PointCloud<PointType>::Ptr transformedRoiCloud;
 	pcl::PointCloud<PointType>::Ptr debugCloud;
+	pcl::PointCloud<PointType>::Ptr angleCloud;
 	
 	// Publish할 MarkerArray
 	std::shared_ptr<visualization_msgs::MarkerArray> carMarkerArray = std::make_shared<visualization_msgs::MarkerArray>();
@@ -110,6 +110,7 @@ public:
 		pubDebugCloud = nh.advertise<sensor_msgs::PointCloud2>("/debug_cloud", 1);
 		pubTransformedCloud = nh.advertise<sensor_msgs::PointCloud2>("/transformed_cloud", 1);
 		pubTransformedRoiCloud = nh.advertise<sensor_msgs::PointCloud2>("/transformed_roi_cloud", 1);
+		pubAngleCloud = nh.advertise<sensor_msgs::PointCloud2>("/angle_cloud", 1);
 
 		pubCarMarkerArray = nh.advertise<visualization_msgs::MarkerArray>("/markers", 1);
 		pubCarBboxArray = nh.advertise<visualization_msgs::MarkerArray>("/markers_vis", 1);
@@ -122,6 +123,12 @@ public:
 		subLocalMsgs.subscribe(nh, "/local_msgs_to_vision", 1000);
 
 	// ------------------------------ 카메라 센서퓨전 서브프로세스 -------------------------------
+		/*
+		 * 아래 vector는 [이미지토픽, 바운딩 박스 or 세그멘테이션 이미지, 출력할 마커 토픽의 이름]으로 구성되어 있다.
+		 * 그리고 g_cmd<num>은 각 카메라의 파라미터를 의미하므로 해당 파라미터값을 찾아 입력해준다.
+		 * 마지막으로 해당 코드는 rosPackage이기에 상대좌표가 이 코드가 아닌, ~/.ros를 기준으로 작동하기에 절대좌표로 입력해준다.
+		 * 방법을 분명 있을텐데 귀찮다...
+		*/
         // 카메라별 토픽 및 파라미터 설정
 		camera_box_pairs = { {"/usb_cam/static", "/static_bbox", "/vision_marker"}, {"/usb_cam/static", "/static_bbox", "/vision_test"}};
 
@@ -187,6 +194,7 @@ public:
 		transformedCloud.reset(new pcl::PointCloud<PointType>());
 		transformedRoiCloud.reset(new pcl::PointCloud<PointType>());
 		debugCloud.reset(new pcl::PointCloud<PointType>());
+		angleCloud.reset(new pcl::PointCloud<PointType>());
 	}
 
 
@@ -204,6 +212,7 @@ public:
 		debugCloud->clear();
 		transformedCloud->clear();
 		transformedRoiCloud->clear();
+		angleCloud->clear();
 
 		// markerArray 초기화
 		deleteAllMarkers(carMarkerArray);
@@ -243,6 +252,8 @@ public:
 	void getPointCloud(){
 	// 전체 포인트 클라우드 기본 셋팅
 		pointCloudGenerator.getFullCloud(laserCloudIn, fullCloud, fullInfoCloud);
+	// xyz범위 자르기 + 일정 각도 내만 관심영역으로 설정 
+		pointCloudGenerator.getAngleCloud(fullCloud, angleCloud, {-5, 5}, {-5, 5}, {-0.7, 1}, {-45, 45});
 	// 관심 영역 설정
 		pointCloudGenerator.getInterestCloud(fullCloud, interestCloud, {-2, 15}, {-6, 6}, {-0.7, 1.5});
 	// 전방 영역 설정
@@ -267,23 +278,24 @@ public:
 		pubOdometry.publish(local);
 
 	// MarkArray Publish
-		publisherMarkerArray(carMarkerArray, pubCarMarkerArray, "base_link");
-		publisherMarkerArray(carBboxArray, pubCarBboxArray, "base_link");
-		publisherMarkerArray(objMarkerArray, pubObjMarkerArray, "base_link");
-		publisherMarkerArray(angleMarkerArray, pubAngleMarkerArray, "base_link");
+		publisherMarkerArray(carMarkerArray, pubCarMarkerArray, "map");
+		publisherMarkerArray(carBboxArray, pubCarBboxArray, "map");
+		publisherMarkerArray(objMarkerArray, pubObjMarkerArray, "map");
+		publisherMarkerArray(angleMarkerArray, pubAngleMarkerArray, "map");
 	
 	// 포인트 클라우드 Publish
-		publisher(fullCloud, pubFullCloud, "base_laser");
-		publisher(fullInfoCloud, pubFullInfoCloud, "base_laser");
-		publisher(interestCloud, pubInterestCloud, "base_laser");
-		publisher(interestCloud2D, pubInterestCloud2D, "base_laser");
-		publisher(ROICloud, pubROICloud, "base_laser");
-		publisher(fovCloud, pubFovCloud, "base_link");
-		publisher(groundCloud, pubgroundCloud, "base_laser");
-		publisher(nongroundCloud, pubnongroundCloud, "base_laser");
-		publisher(debugCloud, pubDebugCloud, "base_laser");
-		publisher(transformedCloud, pubTransformedCloud, "base_link");
-		publisher(transformedRoiCloud, pubTransformedRoiCloud, "base_link");
+		publisher(fullCloud, pubFullCloud, "map");
+		publisher(fullInfoCloud, pubFullInfoCloud, "map");
+		publisher(interestCloud, pubInterestCloud, "map");
+		publisher(interestCloud2D, pubInterestCloud2D, "map");
+		publisher(ROICloud, pubROICloud, "map");
+		publisher(fovCloud, pubFovCloud, "map");
+		publisher(groundCloud, pubgroundCloud, "map");
+		publisher(nongroundCloud, pubnongroundCloud, "map");
+		publisher(debugCloud, pubDebugCloud, "map");
+		publisher(transformedCloud, pubTransformedCloud, "map");
+		publisher(transformedRoiCloud, pubTransformedRoiCloud, "map");
+		publisher(angleCloud, pubAngleCloud, "map");
 	}
 };
 

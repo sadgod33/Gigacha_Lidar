@@ -24,11 +24,14 @@ private:
 
     cv::Mat real_K_MAT;
     cv::Mat TransformMat;
+
+    ParamsLidar params_lidar;
+    CameraParams params_camera;
     bool wall_follow;
     float area_ratio;
+    G_CMD g_cmd;
 
     int c_idx;
-    G_CMD g_cmd;
 
 public:
     FusionLineNode(G_CMD& g_cmd, int& camera_idx, string& image_topic, string& seg_image_topic, string& Line_topic_name, string& Follow_topic_name): nh("~"), g_cmd(g_cmd) 
@@ -42,8 +45,6 @@ public:
         seg_image_sub.subscribe(nh, seg_image_topic, 5);
         c_idx = camera_idx;
 
-        ParamsLidar params_lidar;
-        CameraParams params_camera;
         params_camera.WIDTH = g_cmd.cam[0];
         params_camera.HEIGHT = g_cmd.cam[1];
         
@@ -87,6 +88,33 @@ public:
         pubLineMarkerArray.publish(LineMarkerArray);
         pubFollowMarkerArray.publish(FollowMarkerArray);
     }
+    // --------------------------- 모서리 검출용 변환 행렬 함수 -------------------------
+
+    // 교차점 계산 함수
+    bool intersectionOfLines(Point2f pt1, Point2f pt2, Point2f pt3, Point2f pt4, Point2f &intersection) {
+        float denom = (pt1.x - pt2.x) * (pt3.y - pt4.y) - (pt1.y - pt2.y) * (pt3.x - pt4.x);
+        if (denom == 0) return false;
+
+        intersection.x = ((pt1.x * pt2.y - pt1.y * pt2.x) * (pt3.x - pt4.x) - (pt1.x - pt2.x) * (pt3.x * pt4.y - pt3.y * pt4.x)) / denom;
+        intersection.y = ((pt1.x * pt2.y - pt1.y * pt2.x) * (pt3.y - pt4.y) - (pt1.y - pt2.y) * (pt3.x * pt4.y - pt3.y * pt4.x)) / denom;
+
+        return true;
+    }
+
+    // 직각 확인 함수
+    bool isRightAngle(Point pt, Point pt1, Point pt2) {
+        Point vec1 = pt1 - pt;
+        Point vec2 = pt2 - pt;
+
+        double dotProduct = vec1.dot(vec2);
+        double len1 = sqrt(vec1.x * vec1.x + vec1.y * vec1.y);
+        double len2 = sqrt(vec2.x * vec2.x + vec2.y * vec2.y);
+
+        double cosTheta = dotProduct / (len1 * len2);
+        return fabs(cosTheta) < 0.1;
+    }
+
+    //
 
     // --------------------------- 센서퓨전용 변환 행렬 함수 ----------------------------
 
@@ -275,6 +303,9 @@ public:
         cv::Mat img = cv_img->image;
         cv::Mat seg_img_mat = cv_seg_img->image;
 
+        std::cout << "----------------cv_seg_img Rows: " << seg_img_mat.rows << std::endl;
+        std::cout << "                           Cols: " << seg_img_mat.cols << std::endl;
+
         vector<vector<float>> point_list;
         if (ouster->data.empty())
         {
@@ -296,13 +327,18 @@ public:
         }
         cv::Mat filtered_xyz_p = pc_np.colRange(0, 3);
         cv::Mat xyz_p = pc_np.colRange(0, 4).t();                           // world_xyz
+        cout << xyz_p.at<float>(5, 0) << ", " << xyz_p.at<float>(5, 1) << ", " << xyz_p.at<float>(5, 2) << endl;
         cv::Mat xyz_c = transformLiDARToCamera(TransformMat, xyz_p);        // Ext
+        std::cout << "----------------xyz_c Rows: " << xyz_c.rows << std::endl;
+        std::cout << "                      Cols: " << xyz_c.cols << std::endl;
         cv::Mat xy_i = transformCameraToImage(real_K_MAT, xyz_c);
                 // fixel_coord: 굳이 전치하지 말고 [{0, 1} , {idx}] 구조 그대로 사용하는게 맘 편할듯
 
         xy_i.convertTo(xy_i, CV_32S);
 
         xy_i = xy_i.t();
+        std::cout << "----------------xy_i Rows: " << xy_i.rows << std::endl;
+        std::cout << "                     Cols: " << xy_i.cols << std::endl;
 
         // ---------------------- lidar_lane --------------------
 
@@ -311,8 +347,8 @@ public:
         std::vector<std::vector<float>> lane_3d_pts;
 
         for (int i = 0; i < xy_i.rows; ++i) {
-            if (xy_i.at<int>(i, 1) < 720 && xy_i.at<int>(i, 1) > 0 && 
-                xy_i.at<int>(i, 0) > 0 && xy_i.at<int>(i, 0) < 1280) {
+            if (xy_i.at<int>(i, 1) < params_camera.WIDTH && xy_i.at<int>(i, 1) > 0 && 
+                xy_i.at<int>(i, 0) > 0 && xy_i.at<int>(i, 0) < params_camera.HEIGHT) {
                 if (cv_seg_img->image.at<uchar>(xy_i.at<int>(i, 1), xy_i.at<int>(i, 0)) == 1 &&
                     cv_seg_img->image.at<uchar>(xy_i.at<int>(i, 1), xy_i.at<int>(i, 0) - 5) == 0) {
                     lane_3d_pts.push_back({filtered_xyz_p.at<float>(i, 0), filtered_xyz_p.at<float>(i, 1)});
@@ -321,6 +357,7 @@ public:
                     point.y = filtered_xyz_p.at<float>(i, 1);
                     point.z = 0;
                     tempPointCloud->points.push_back(point);
+                    cout << xy_i.at<int>(i, 1) << " - " << xy_i.at<int>(i, 0) << " /// ";
                 }
             }
         }

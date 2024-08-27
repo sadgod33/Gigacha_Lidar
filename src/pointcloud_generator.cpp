@@ -186,6 +186,24 @@ void PointCloudGenerator::getInterestCloud(const pcl::PointCloud<PointType>::Ptr
     preprocessor.cutPointCloud(input_pointCloud, output_pointCloud, x_threshold, y_threshold, z_threshold);
 }
 
+/**
+ * @brief InterestCloud를 생성한다.
+ * @param 과정: (범위 지정)
+ * @param input_pointCloud 가공 전 포인트 클라우드
+ * @param output_pointCloud 가공 후 저장할 포인트 클라우드
+ * @param xyz_threshold 포인트 클라우드를 자를 범위
+*/
+void PointCloudGenerator::getAngleCloud(const pcl::PointCloud<PointType>::Ptr& input_pointCloud,
+                                           const pcl::PointCloud<PointType>::Ptr& output_pointCloud,
+                                           const std::pair<double, double>       x_threshold, 
+                                           const std::pair<double, double>       y_threshold, 
+                                           const std::pair<double, double>       z_threshold,
+                                           const std::pair<float, float>         xy_angle_threshold)
+{ 
+    output_pointCloud->clear();
+    preprocessor.cutPointCloud(input_pointCloud, output_pointCloud, x_threshold, y_threshold, z_threshold, xy_angle_threshold);
+}
+
 
 /**
  * @brief InterestCloud를 생성한다.
